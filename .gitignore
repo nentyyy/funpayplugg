@@ -1,0 +1,11 @@
+.env
+*.sqlite3
+*.db
+logs/
+data/
+__pycache__/
+*.pyc
+.venv/
+.idea/
+.vscode/
+playwright-report/
