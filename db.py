@@ -5,7 +5,7 @@ import sqlite3
 from pathlib import Path
 from threading import Lock
 
-from models import OrderRecord, ParsedOrderData, utc_now_iso
+from data import OrderRecord, ParsedOrderData, utc_now_iso
 
 
 class Storage:

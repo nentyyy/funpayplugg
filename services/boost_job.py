@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import logging
 
-from message_templates import generic_error, twiboost_completed, twiboost_started
-from models import OrderStatus
-from storage import Storage
-from twiboost_client import TwiboostClient
+from data import OrderStatus
+from db import Storage
+from msg import generic_error, twiboost_completed, twiboost_started
+from twiboost import TwiboostClient
 
 
 class TwiboostService:

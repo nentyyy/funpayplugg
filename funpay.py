@@ -11,9 +11,9 @@ from urllib.parse import urljoin
 import requests
 from bs4 import BeautifulSoup
 
-from config import Settings
-from models import ChatMessage, OrderPageData
-from parser_utils import normalize_text
+from cfg import Settings
+from data import ChatMessage, OrderPageData
+from parse import normalize_text
 
 
 @dataclass(slots=True)

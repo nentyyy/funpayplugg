@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import logging
 
-from fragment_client import FragmentClient
-from message_templates import generic_error, stars_completed, stars_delay, stars_processing
-from models import OrderStatus
-from storage import Storage
+from db import Storage
+from data import OrderStatus
+from fragment import FragmentClient
+from msg import generic_error, stars_completed, stars_delay, stars_processing
 
 
 class StarsService:

@@ -4,15 +4,15 @@ import asyncio
 import os
 from pathlib import Path
 
-from config import load_settings
-from fragment_client import FragmentClient
-from funpay_client import FunPayClient
-from logger import setup_logger
-from services.orders import OrdersService
-from services.stars import StarsService
-from services.twiboost import TwiboostService
-from storage import Storage
-from twiboost_client import TwiboostClient
+from cfg import load_settings
+from db import Storage
+from fragment import FragmentClient
+from funpay import FunPayClient
+from logs import setup_logger
+from services.boost_job import TwiboostService
+from services.runner import OrdersService
+from services.stars_job import StarsService
+from twiboost import TwiboostClient
 
 
 def load_env_file(path: str = ".env") -> None:

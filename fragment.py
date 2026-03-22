@@ -6,8 +6,8 @@ import logging
 
 from playwright.async_api import Browser, BrowserContext, Page, async_playwright
 
-from config import Settings
-from models import FragmentResult
+from cfg import Settings
+from data import FragmentResult
 
 
 class FragmentClient:

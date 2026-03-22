@@ -8,8 +8,8 @@ from urllib.parse import urljoin
 
 import requests
 
-from config import Settings
-from models import TwiboostResult
+from cfg import Settings
+from data import TwiboostResult
 
 
 class TwiboostClient:

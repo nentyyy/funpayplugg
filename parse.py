@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from typing import Iterable
 
-from models import OrderType
+from data import OrderType
 
 
 STARS_KEYWORDS = ("звезды", "звёзды", "stars", "telegram stars")

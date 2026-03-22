@@ -3,8 +3,10 @@ from __future__ import annotations
 import asyncio
 import logging
 
-from funpay_client import FunPayClient
-from message_templates import (
+from data import OrderRecord, OrderStatus, OrderType, ParsedOrderData
+from db import Storage
+from funpay import FunPayClient
+from msg import (
     request_link,
     request_username,
     stars_intro,
@@ -13,8 +15,7 @@ from message_templates import (
     twiboost_link_confirm,
     twiboost_reenter_link,
 )
-from models import OrderRecord, OrderStatus, OrderType, ParsedOrderData
-from parser_utils import (
+from parse import (
     detect_order_type,
     extract_amount,
     extract_url,
@@ -24,9 +25,8 @@ from parser_utils import (
     looks_like_link,
     looks_like_rejection,
 )
-from services.stars import StarsService
-from services.twiboost import TwiboostService
-from storage import Storage
+from services.boost_job import TwiboostService
+from services.stars_job import StarsService
 
 
 class OrdersService:
