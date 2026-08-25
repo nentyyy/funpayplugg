@@ -5,8 +5,8 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 
-def setup_logger(level: str = "INFO", log_file: str = "logs/bot.log") -> logging.Logger:
-    logger = logging.getLogger("funpay_automation")
+def setup_logger(level: str = "INFO", log_file: str = "logs/videobot.log") -> logging.Logger:
+    logger = logging.getLogger("videobot")
     if logger.handlers:
         return logger
 

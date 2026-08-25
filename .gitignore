@@ -1,11 +1,9 @@
 .env
-*.sqlite3
-*.db
-logs/
-data/
+.venv/
 __pycache__/
 *.pyc
-.venv/
-.idea/
-.vscode/
-playwright-report/
+data/
+logs/
+work/
+output/
+*.sqlite3
