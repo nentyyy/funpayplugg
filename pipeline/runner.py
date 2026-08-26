@@ -9,6 +9,7 @@ from typing import Any, Protocol
 
 from ai import GeminiClient
 from config import Settings
+from flow import FlowClient, FlowError
 from pipeline.assemble import Assembler
 from pipeline.media import ensure_ffmpeg
 from pipeline.script import ScriptWriter
@@ -41,14 +42,21 @@ class Produced:
 
 
 class VideoPipeline:
-    def __init__(self, settings: Settings, storage: Storage, ai: GeminiClient, logger: logging.Logger) -> None:
+    def __init__(
+        self,
+        settings: Settings,
+        storage: Storage,
+        ai: GeminiClient,
+        logger: logging.Logger,
+        flow: FlowClient | None = None,
+    ) -> None:
         self.settings = settings
         self.storage = storage
         self.ai = ai
         self.logger = logger
         self.writer = ScriptWriter(ai, logger)
         self.voice = VoiceOver(ai, logger)
-        self.visuals = VisualMaker(ai, settings, logger)
+        self.visuals = VisualMaker(ai, settings, logger, flow=flow)
         self.assembler = Assembler(settings, logger)
         self.output_dir = Path("output")
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -61,6 +69,37 @@ class VideoPipeline:
         fresh = await self.storage.get_job(job.id)
         if fresh and fresh.status == JobStatus.CANCELLED:
             raise JobCancelled("Задача отменена")
+
+    async def _render_all(self, job: Job, scenes: list, mode: str, work_dir: Path) -> list:
+        visuals = []
+        for index, scene in enumerate(scenes):
+            await self._guard(job)
+            visuals.append(await self.visuals.render_scene(index, scene["visual_prompt"], mode, work_dir))
+        return visuals
+
+    async def _resolve_visual_mode(self, mode: str, scenes_count: int, job: Job, notifier: Notifier) -> str:
+        """Flow либо тянет весь ролик, либо не начинаем — иначе кадры будут разнородные."""
+        if mode != "flow":
+            return mode
+
+        flow = getattr(self.visuals, "flow", None)
+        if flow is None:
+            if self.settings.flow_strict:
+                raise FlowError("Flow не сконфигурирован")
+            await notifier.on_status(job, "Flow не сконфигурирован, беру картинки")
+            return "image"
+
+        available = await flow.pool.available()
+        if available >= scenes_count:
+            return mode
+
+        message = (
+            f"на сегодня осталось {available} генераций Flow, а нужно {scenes_count}"
+        )
+        if self.settings.flow_strict:
+            raise FlowError(f"Не хватает Flow: {message}")
+        await notifier.on_status(job, f"Не хватает Flow ({message}) — весь ролик делаю картинками")
+        return "image"
 
     async def produce(self, job: Job, notifier: Notifier) -> Produced:
         ensure_ffmpeg(self.settings.ffmpeg_bin, self.settings.ffprobe_bin)
@@ -116,11 +155,16 @@ class VideoPipeline:
         # 3. Картинка / видео на каждую сцену
         await self._guard(job)
         await self.storage.update_job(job.id, status=JobStatus.VISUALS)
+        visual_mode = await self._resolve_visual_mode(visual_mode, len(scenes), job, notifier)
         await notifier.on_status(job, f"Генерирую визуал ({visual_mode})…")
-        visuals = []
-        for index, scene in enumerate(scenes):
-            await self._guard(job)
-            visuals.append(await self.visuals.render_scene(index, scene["visual_prompt"], visual_mode, work_dir))
+        try:
+            visuals = await self._render_all(job, scenes, visual_mode, work_dir)
+        except FlowError as error:
+            if self.settings.flow_strict:
+                raise
+            self.logger.warning("Flow сорвался посреди ролика | %s", error)
+            await notifier.on_status(job, f"Flow отвалился ({error}). Перерисовываю весь ролик картинками…")
+            visuals = await self._render_all(job, scenes, "image", work_dir)
 
         # 4. Монтаж
         await self._guard(job)

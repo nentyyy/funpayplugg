@@ -7,3 +7,4 @@ logs/
 work/
 output/
 *.sqlite3
+profiles/

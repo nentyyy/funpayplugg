@@ -4,7 +4,7 @@ import asyncio
 import json
 import sqlite3
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from threading import Lock
 from typing import Any
@@ -126,6 +126,17 @@ class Storage:
                     key TEXT PRIMARY KEY,
                     value TEXT NOT NULL,
                     updated_at TEXT NOT NULL
+                )
+                """
+            )
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS flow_usage (
+                    name TEXT NOT NULL,
+                    day TEXT NOT NULL,
+                    used INTEGER NOT NULL DEFAULT 0,
+                    blocked_until TEXT,
+                    PRIMARY KEY (name, day)
                 )
                 """
             )
@@ -262,3 +273,48 @@ class Storage:
         with self._lock:
             rows = self._connection.execute("SELECT status, COUNT(*) AS total FROM jobs GROUP BY status").fetchall()
         return {row["status"]: row["total"] for row in rows}
+
+    async def flow_usage(self, name: str, day: str) -> tuple[int, str | None]:
+        return await asyncio.to_thread(self._flow_usage_sync, name, day)
+
+    def _flow_usage_sync(self, name: str, day: str) -> tuple[int, str | None]:
+        with self._lock:
+            row = self._connection.execute(
+                "SELECT used, blocked_until FROM flow_usage WHERE name = ? AND day = ?",
+                (name, day),
+            ).fetchone()
+        if not row:
+            return 0, None
+        blocked = row["blocked_until"]
+        if blocked and blocked <= utc_now_iso():
+            blocked = None
+        return row["used"], blocked
+
+    async def flow_spend(self, name: str, day: str) -> None:
+        await asyncio.to_thread(self._flow_spend_sync, name, day)
+
+    def _flow_spend_sync(self, name: str, day: str) -> None:
+        with self._lock:
+            self._connection.execute(
+                """
+                INSERT INTO flow_usage (name, day, used) VALUES (?, ?, 1)
+                ON CONFLICT(name, day) DO UPDATE SET used = flow_usage.used + 1
+                """,
+                (name, day),
+            )
+            self._connection.commit()
+
+    async def flow_block(self, name: str, day: str, minutes: int) -> None:
+        await asyncio.to_thread(self._flow_block_sync, name, day, minutes)
+
+    def _flow_block_sync(self, name: str, day: str, minutes: int) -> None:
+        until = (datetime.now(timezone.utc) + timedelta(minutes=minutes)).isoformat(timespec="seconds")
+        with self._lock:
+            self._connection.execute(
+                """
+                INSERT INTO flow_usage (name, day, used, blocked_until) VALUES (?, ?, 0, ?)
+                ON CONFLICT(name, day) DO UPDATE SET blocked_until = excluded.blocked_until
+                """,
+                (name, day, until),
+            )
+            self._connection.commit()

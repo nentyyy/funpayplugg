@@ -85,6 +85,15 @@ PRESETS: dict[str, Preset] = {
 
 DEFAULT_PRESET = "ai_stories"
 
+# ключ -> (подпись, сколько сцен, секунд на сцену)
+# 8 секунд на сцену неспроста: столько длится клип Veo, кадр не придётся тянуть.
+LENGTHS: dict[str, tuple[str, int, float]] = {
+    "s10": ("~10 сек · одна сцена", 1, 8.0),
+    "s30": ("~30 сек · три сцены", 3, 9.0),
+    "s60": ("~60 сек · шесть сцен", 6, 9.5),
+}
+DEFAULT_LENGTH = "s10"
+
 VOICES = [
     "Zephyr", "Puck", "Charon", "Kore", "Fenrir", "Leda", "Orus", "Aoede",
     "Callirrhoe", "Autonoe", "Enceladus", "Iapetus", "Umbriel", "Algieba",
@@ -115,6 +124,10 @@ def script_prompt(
 ) -> str:
     words_per_scene = int(scene_seconds * 2.4)
     total_seconds = int(scenes_count * scene_seconds)
+
+    if scenes_count == 1:
+        return one_scene_prompt(preset, topic, words_per_scene, total_seconds, language, orientation)
+
     return f"""Напиши сценарий вертикального видео для YouTube {"Shorts" if orientation == "vertical" else ""}.
 
 ТЕМА: {topic}
@@ -142,6 +155,47 @@ def script_prompt(
 - thumbnail_prompt: описание обложки НА АНГЛИЙСКОМ, один яркий кадр.
 
 Верни JSON строго по схеме."""
+
+
+def one_scene_prompt(
+    preset: Preset,
+    topic: str,
+    words: int,
+    seconds: int,
+    language: str,
+    orientation: str,
+) -> str:
+    return f"""Напиши сценарий {"вертикального " if orientation == "vertical" else ""}видео на {seconds} секунд.
+Это ОДИН кадр и ОДНА законченная мысль — не отрывок, не тизер, не начало серии.
+
+ТЕМА: {topic}
+ФОРМАТ: {preset.title}
+АУДИТОРИЯ: {preset.audience}
+СТИЛЬ: {preset.style}
+ЯЗЫК: {language}
+
+ГЛАВНОЕ ПРАВИЛО: зритель должен суметь пересказать это другу одной фразой.
+Если после просмотра нечего пересказать — сценарий не годится, придумай другой.
+
+narration: ровно одна сцена, примерно {words} слов на языке {language}.
+- Первые слова — сразу суть, без разгона: никаких «сегодня я расскажу», «представьте себе».
+- Одна мысль: факт, наблюдение или поворот, который неочевиден.
+- Последние слова — панч или вывод, мысль обязана закрыться. Не обрывай на интриге.
+- Без «подпишись», «ставь лайк», «часть первая» и прочего мусора.
+
+visual_prompt: подробное описание единственного кадра НА АНГЛИЙСКОМ.
+Кадр должен работать сам по себе, даже без звука: понятно, что происходит и с кем.
+Добавь стиль: {preset.visual_style}. Никакого текста в кадре.
+
+caption: 2-4 слова на языке {language}, суть ролика крупным планом.
+
+МЕТАДАННЫЕ:
+- title: до 70 символов на языке {language}, обещает ровно то, что в ролике.
+- description: 1-2 предложения на языке {language} и 3-5 хештегов в конце.
+- tags: 8-12 ключевых слов на языке {language} без решёток.
+- thumbnail_prompt: описание обложки НА АНГЛИЙСКОМ.
+
+Верни JSON строго по схеме: поле scenes — массив ровно из одного объекта."""
 
 
 TOPIC_PROMPT = """Придумай {count} свежих идей для коротких видео на YouTube.

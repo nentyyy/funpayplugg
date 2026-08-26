@@ -67,6 +67,20 @@ class Settings:
     veo_poll_interval: int
     veo_timeout: int
 
+    flow_url: str
+    flow_profiles_dir: str
+    flow_accounts: list[str]
+    flow_daily_limit: int
+    flow_headless: bool
+    flow_timeout: int
+    flow_block_minutes: int
+    flow_prompt_selector: str
+    flow_submit_selector: str
+    flow_video_pattern: str
+    flow_strict: bool
+    flow_debug: bool
+    flow_debug_dir: str
+
     youtube_client_id: str
     youtube_client_secret: str
     youtube_refresh_token: str
@@ -102,6 +116,10 @@ class Settings:
         return not self.admin_ids or user_id in self.admin_ids
 
     @property
+    def flow_ready(self) -> bool:
+        return bool(self.flow_accounts)
+
+    @property
     def youtube_ready(self) -> bool:
         return bool(self.youtube_client_id and self.youtube_client_secret and self.youtube_refresh_token)
 
@@ -135,7 +153,7 @@ def load_settings() -> Settings:
         video_model=os.getenv("GEMINI_VIDEO_MODEL", "veo-3.1-fast-generate-preview"),
         visual_mode=os.getenv("VISUAL_MODE", "image").strip().lower(),
         orientation=os.getenv("ORIENTATION", "vertical").strip().lower(),
-        scenes_count=_int(os.getenv("SCENES_COUNT"), 6),
+        scenes_count=_int(os.getenv("SCENES_COUNT"), 1),
         scene_seconds=_float(os.getenv("SCENE_SECONDS"), 8.0),
         voice_name=os.getenv("TTS_VOICE", "Kore"),
         language=os.getenv("CONTENT_LANGUAGE", "ru"),
@@ -146,6 +164,19 @@ def load_settings() -> Settings:
         thumbnail_enabled=_bool(os.getenv("THUMBNAIL_ENABLED"), True),
         veo_poll_interval=_int(os.getenv("VEO_POLL_INTERVAL"), 15),
         veo_timeout=_int(os.getenv("VEO_TIMEOUT"), 900),
+        flow_url=os.getenv("FLOW_URL", "https://labs.google/fx/tools/flow"),
+        flow_profiles_dir=os.getenv("FLOW_PROFILES_DIR", "profiles"),
+        flow_accounts=_list(os.getenv("FLOW_ACCOUNTS")) or ["acc1"],
+        flow_daily_limit=_int(os.getenv("FLOW_DAILY_LIMIT"), 10),
+        flow_headless=_bool(os.getenv("FLOW_HEADLESS"), False),
+        flow_timeout=_int(os.getenv("FLOW_TIMEOUT"), 420),
+        flow_block_minutes=_int(os.getenv("FLOW_BLOCK_MINUTES"), 60),
+        flow_prompt_selector=os.getenv("FLOW_PROMPT_SELECTOR", "textarea"),
+        flow_submit_selector=os.getenv("FLOW_SUBMIT_SELECTOR", ""),
+        flow_video_pattern=os.getenv("FLOW_VIDEO_PATTERN", r"\.mp4|video/mp4"),
+        flow_strict=_bool(os.getenv("FLOW_STRICT"), False),
+        flow_debug=_bool(os.getenv("FLOW_DEBUG"), True),
+        flow_debug_dir=os.getenv("FLOW_DEBUG_DIR", "logs/flow"),
         youtube_client_id=os.getenv("YOUTUBE_CLIENT_ID", ""),
         youtube_client_secret=os.getenv("YOUTUBE_CLIENT_SECRET", ""),
         youtube_refresh_token=os.getenv("YOUTUBE_REFRESH_TOKEN", ""),

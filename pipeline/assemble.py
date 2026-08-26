@@ -44,10 +44,11 @@ class Assembler:
         if visual.kind == "video":
             chain = (
                 f"[0:v]scale={width}:{height}:force_original_aspect_ratio=increase,"
-                f"crop={width}:{height},fps={FPS},setsar=1[v]"
+                f"crop={width}:{height},fps={FPS},"
+                f"tpad=stop_mode=clone:stop_duration={max(duration, 1.0):.3f},setsar=1[v]"
             )
             args = [
-                "-stream_loop", "-1", "-i", str(visual.path),
+                "-i", str(visual.path),
                 "-i", str(audio_path),
                 "-filter_complex", chain,
             ]

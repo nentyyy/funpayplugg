@@ -13,9 +13,10 @@ from aiogram.types import CallbackQuery, FSInputFile, InlineKeyboardButton, Inli
 
 from ai import GeminiClient
 from config import Settings
+from flow import FlowPool
 from pipeline.media import file_size_mb
 from pipeline.script import ScriptWriter
-from prompts import PRESETS, VOICES, get_preset
+from prompts import DEFAULT_LENGTH, LENGTHS, PRESETS, VOICES, get_preset
 from scheduler import AutoScheduler
 from storage import ACTIVE_STATUSES, Job, JobStatus, STATUS_LABELS, Storage
 from youtube import YouTubeUploader
@@ -38,11 +39,13 @@ class BotContext:
     uploader: YouTubeUploader
     scheduler: AutoScheduler
     logger: logging.Logger
+    flow: FlowPool | None = None
 
 
 class NewVideo(StatesGroup):
     preset = State()
     topic = State()
+    length = State()
     mode = State()
     publish = State()
 
@@ -61,11 +64,20 @@ def _topic_keyboard(topics: list[str]) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
+def _length_keyboard() -> InlineKeyboardMarkup:
+    rows = [
+        [InlineKeyboardButton(text=label, callback_data=f"len:{key}")]
+        for key, (label, _, _) in LENGTHS.items()
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
 def _mode_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="🖼 Картинки + движение (дёшево)", callback_data="mode:image")],
-            [InlineKeyboardButton(text="🎬 Veo видео (дорого)", callback_data="mode:veo")],
+            [InlineKeyboardButton(text="🎥 Flow по подписке (через браузер)", callback_data="mode:flow")],
+            [InlineKeyboardButton(text="🎬 Veo через API (дорого)", callback_data="mode:veo")],
             [InlineKeyboardButton(text="🧪 Тест без картинок (бесплатно)", callback_data="mode:gradient")],
         ]
     )
@@ -175,6 +187,7 @@ def build_router(ctx: BotContext) -> Router:
             "/cancel N — отменить задачу\n"
             "/settings — текущие настройки\n"
             "/yt — проверить подключение YouTube\n"
+            "/flow — расход Flow-аккаунтов за сутки\n"
             "/voices — список голосов\n"
             "/models — доступные модели Gemini",
             parse_mode="HTML",
@@ -226,11 +239,11 @@ def build_router(ctx: BotContext) -> Router:
             await callback.answer("Тема устарела, нажми /new", show_alert=True)
             return
         await state.update_data(topic=topics[index])
-        await state.set_state(NewVideo.mode)
+        await state.set_state(NewVideo.length)
         await callback.message.edit_text(
-            f"Тема: <b>{html.escape(topics[index])}</b>\n\nКак генерировать картинку?",
+            f"Тема: <b>{html.escape(topics[index])}</b>\n\nКакой длины ролик?",
             parse_mode="HTML",
-            reply_markup=_mode_keyboard(),
+            reply_markup=_length_keyboard(),
         )
         await callback.answer()
 
@@ -241,8 +254,25 @@ def build_router(ctx: BotContext) -> Router:
             await message.answer("Слишком короткая тема, напиши подробнее.")
             return
         await state.update_data(topic=topic)
+        await state.set_state(NewVideo.length)
+        await message.answer("Какой длины ролик?", reply_markup=_length_keyboard())
+
+    @router.callback_query(F.data.startswith("len:"))
+    async def on_length(callback: CallbackQuery, state: FSMContext) -> None:
+        key = callback.data.split(":", 1)[1]
+        await state.update_data(length=key)
         await state.set_state(NewVideo.mode)
-        await message.answer("Как генерировать картинку?", reply_markup=_mode_keyboard())
+        scenes = LENGTHS.get(key, LENGTHS[DEFAULT_LENGTH])[1]
+        hint = (
+            "Одна сцена — хватит одного клипа Flow."
+            if scenes == 1
+            else f"{scenes} сцены — столько же клипов Flow, если выберешь его."
+        )
+        await callback.message.edit_text(
+            f"{hint}\n\nКак генерировать картинку?",
+            reply_markup=_mode_keyboard(),
+        )
+        await callback.answer()
 
     @router.callback_query(F.data.startswith("mode:"))
     async def on_mode(callback: CallbackQuery, state: FSMContext) -> None:
@@ -258,6 +288,7 @@ def build_router(ctx: BotContext) -> Router:
         await state.clear()
 
         preset = get_preset(data.get("preset", ""))
+        _, scenes_count, scene_seconds = LENGTHS.get(data.get("length", ""), LENGTHS[DEFAULT_LENGTH])
         topic = data.get("topic")
         if not topic:
             await callback.answer("Потерял тему, начни заново: /new", show_alert=True)
@@ -276,8 +307,8 @@ def build_router(ctx: BotContext) -> Router:
             params={
                 "visual_mode": data.get("visual_mode", settings.visual_mode),
                 "voice": preset.voice,
-                "scenes_count": settings.scenes_count,
-                "scene_seconds": settings.scene_seconds,
+                "scenes_count": scenes_count,
+                "scene_seconds": scene_seconds,
                 "language": settings.language,
                 "subtitles": settings.subtitles,
                 "privacy": choice if auto_publish else settings.youtube_privacy,
@@ -450,6 +481,29 @@ def build_router(ctx: BotContext) -> Router:
             return
         interesting = [name for name in models if any(tag in name for tag in ("flash", "veo", "tts", "image", "pro"))]
         await message.answer("Доступно:\n<code>" + "\n".join(interesting[:60]) + "</code>", parse_mode="HTML")
+
+    @router.message(Command("flow"))
+    async def cmd_flow(message: Message) -> None:
+        if not settings.is_admin(message.from_user.id):
+            return
+        if ctx.flow is None:
+            await message.answer("Flow не сконфигурирован.")
+            return
+        limit = settings.flow_daily_limit
+        lines = [f"<b>Flow-аккаунты</b> (лимит {limit}/сутки)"]
+        for name, used, blocked in await ctx.flow.report():
+            profile = Path(settings.flow_profiles_dir) / name
+            if not profile.exists():
+                state = "не залогинен"
+            elif blocked:
+                state = f"в блоке до {blocked[11:16]} UTC"
+            elif used >= limit:
+                state = "лимит выбран"
+            else:
+                state = "готов"
+            lines.append(f"{name}: {used}/{limit} · {state}")
+        lines.append("\nЗалогинить: <code>python login_flow.py --acc acc1</code>")
+        await message.answer("\n".join(lines), parse_mode="HTML")
 
     @router.message(Command("yt"))
     async def cmd_yt(message: Message) -> None:

@@ -6,6 +6,7 @@ from pathlib import Path
 
 from ai import GeminiClient
 from config import Settings
+from flow import FlowClient, FlowError
 from pipeline.media import MediaError, run_ffmpeg
 
 PALETTE = [
@@ -30,12 +31,27 @@ class Visual:
 
 
 class VisualMaker:
-    def __init__(self, ai: GeminiClient | None, settings: Settings, logger: logging.Logger) -> None:
+    def __init__(
+        self,
+        ai: GeminiClient | None,
+        settings: Settings,
+        logger: logging.Logger,
+        flow: FlowClient | None = None,
+    ) -> None:
         self.ai = ai
         self.settings = settings
         self.logger = logger
+        self.flow = flow
 
     async def render_scene(self, index: int, prompt: str, mode: str, work_dir: Path) -> Visual:
+        if mode == "flow":
+            # Решение о запасном варианте принимает runner на весь ролик сразу,
+            # иначе в одном видео смешаются клипы Veo и статичные картинки.
+            if self.flow is None:
+                raise FlowError("Flow не сконфигурирован")
+            path = await self.flow.generate(prompt, work_dir / f"scene_{index:02d}_src.mp4")
+            return Visual("video", path)
+
         if mode == "veo" and self.ai:
             try:
                 path = await self.ai.generate_video(

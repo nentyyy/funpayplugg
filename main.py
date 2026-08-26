@@ -9,6 +9,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from ai import GeminiClient
 from bot import BotContext, TelegramNotifier, build_router
 from config import load_env_file, load_settings
+from flow import FlowClient, FlowPool
 from logs import setup_logger
 from pipeline.runner import VideoPipeline, Worker
 from pipeline.script import ScriptWriter
@@ -29,6 +30,9 @@ async def main() -> None:
     await storage.init()
 
     ai = GeminiClient(settings, logger)
+
+    flow_pool = FlowPool(settings, storage, logger)
+    flow_client = FlowClient(settings, flow_pool, logger)
     writer = ScriptWriter(ai, logger)
     uploader = YouTubeUploader(settings, storage, logger)
 
@@ -39,7 +43,7 @@ async def main() -> None:
         await notifier.send(chat_id, text)
 
     scheduler = AutoScheduler(settings, storage, writer, logger, notify=notify)
-    pipeline = VideoPipeline(settings, storage, ai, logger)
+    pipeline = VideoPipeline(settings, storage, ai, logger, flow=flow_client)
     worker = Worker(settings, storage, pipeline, notifier, logger, uploader=uploader)
 
     dispatcher = Dispatcher(storage=MemoryStorage())
@@ -52,6 +56,7 @@ async def main() -> None:
                 writer=writer,
                 uploader=uploader,
                 scheduler=scheduler,
+                flow=flow_pool,
                 logger=logger,
             )
         )
