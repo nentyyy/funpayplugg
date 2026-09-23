@@ -15,3 +15,7 @@ node_modules/
 .tmp/
 exports/*.mp4
 exports/*.wav
+
+# ship the phone and preview cuts (the crf-16 master is large and stays local)
+!exports/cartezz-online-phone.mp4
+!exports/cartezz-online-preview.mp4
