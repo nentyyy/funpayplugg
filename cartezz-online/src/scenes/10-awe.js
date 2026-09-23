@@ -303,45 +303,39 @@
       };
       K.head(ctx, hx, hy, s, headOpts); // drawn straight into the frame, full resolution
 
-      // light and shade masked to his shape: soft passes at reduced resolution (the rim at 1/2, shade and key at 1/4)
-      const mk = layer('mask2', S, 0.5);
-      K.head(fresh(mk, S * 0.5), hx, hy, s, headOpts); // his silhouette at half resolution: the mask
-      const mq = layer('mask4', S, 0.25);
-      fresh(mq, 1).drawImage(mk, 0, 0, mq.width, mq.height);
-      const k4 = S * 0.25, k2 = S * 0.5;
-
-      // shade: the back of the head sinks into the dark, the jaw shades the neck, the coat melts away
-      const shc = layer('shade', S, 0.25);
-      const sh = fresh(shc, k4);
+      // shade, straight onto the frame (the background behind these areas is near-black, so no mask is needed):
+      // the back of the head sinks into the dark, the jaw shades the neck
       {
-        const sg = sh.createLinearGradient(hx + s * 0.15, hy - s * 0.3, hx - s * 0.75, hy + s * 0.2);
+        ctx.save();
+        const sg = ctx.createLinearGradient(hx + s * 0.15, hy - s * 0.3, hx - s * 0.75, hy + s * 0.2);
         sg.addColorStop(0, K.css(P.void, 0));
-        sg.addColorStop(1, K.css(P.void, 0.6));
-        sh.fillStyle = sg;
-        sh.fillRect(0, 0, 1080, 1920);
+        sg.addColorStop(1, K.css(P.void, 0.5));
+        ctx.fillStyle = sg;
+        ctx.beginPath();
+        ctx.rect(hx - s * 1.2, hy - s * 0.75, s * 1.35, s * 2.4);
+        ctx.fill();
         const ca = Math.cos(pitch), sa = Math.sin(pitch);
         const jx = hx + s * 0.33, jy = hy + s * 0.285;
-        const ng = sh.createLinearGradient(jx, jy, jx + sa * s * 0.2, jy + ca * s * 0.2);
+        const ng = ctx.createLinearGradient(jx, jy, jx + sa * s * 0.2, jy + ca * s * 0.2);
         ng.addColorStop(0, K.css(P.void, 0));
         ng.addColorStop(0.35, K.css(P.void, 0.38));
         ng.addColorStop(1, K.css(P.void, 0.62));
-        sh.fillStyle = ng;
-        sh.beginPath();
-        sh.moveTo(jx - s * 0.9 * ca, jy + s * 0.9 * sa - 2);
-        sh.lineTo(jx + s * 0.5 * ca, jy - s * 0.5 * sa - 2);
-        sh.lineTo(jx + s * 0.5 * ca + sa * s * 3, jy - s * 0.5 * sa + ca * s * 3);
-        sh.lineTo(jx - s * 0.9 * ca + sa * s * 3, jy + s * 0.9 * sa + ca * s * 3);
-        sh.closePath();
-        sh.fill();
-        const bgd = sh.createLinearGradient(0, hy + s * 0.75, 0, hy + s * 2.0);
-        bgd.addColorStop(0, K.css(P.void, 0));
-        bgd.addColorStop(1, K.css(P.void, 0.85));
-        sh.fillStyle = bgd;
-        sh.fillRect(0, hy + s * 0.75, 1080, 1920);
-        sh.setTransform(1, 0, 0, 1, 0, 0);
-        sh.globalCompositeOperation = 'destination-in';
-        sh.drawImage(mq, 0, 0);
+        ctx.fillStyle = ng;
+        // bounded by the neck's front edge (x ≈ hx + 0.24 s) so the light in front of his throat stays clean
+        ctx.beginPath();
+        ctx.moveTo(jx - s * 0.9 * ca, jy + s * 0.9 * sa - 2);
+        ctx.lineTo(hx + s * 0.25, jy - s * 0.08 * sa - 2);
+        ctx.lineTo(hx + s * 0.25, hy + s * 0.72);
+        ctx.lineTo(jx - s * 0.9 * ca, hy + s * 0.72);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
       }
+
+      // his silhouette at half resolution: the mask for the light
+      const mk = layer('mask2', S, 0.5);
+      K.head(fresh(mk, S * 0.5), hx, hy, s, headOpts);
+      const k2 = S * 0.5;
 
       // light (additive, half resolution): the key — cold white-violet on the front of the face and the broad
       // spill from the top right on cap and shoulder — then an edge light on every contour facing the hologram
@@ -381,9 +375,10 @@
 
       ctx.save();
       ctx.imageSmoothingEnabled = true;
-      ctx.drawImage(shc, 0, 0, shc.width, shc.height, 0, 0, 1080, 1920);
       ctx.globalCompositeOperation = 'lighter';
-      ctx.drawImage(fxc, 0, 0, fxc.width, fxc.height, 0, 0, 1080, 1920);
+      // only the region the light can reach (the head, neck and shoulder line), not the whole frame
+      const bx0 = 0, by0 = Math.max(0, hy - s * 0.8), bx1 = Math.min(1080, hx + s * 0.75), by1 = Math.min(1920, hy + s * 1.35);
+      ctx.drawImage(fxc, bx0 * k2, by0 * k2, (bx1 - bx0) * k2, (by1 - by0) * k2, bx0, by0, bx1 - bx0, by1 - by0);
       ctx.restore();
 
       // 6. online dots in front, out of focus; one rises past his face on beat 4
