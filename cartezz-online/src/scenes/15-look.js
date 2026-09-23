@@ -1,17 +1,19 @@
-// STUB
-// Placeholder for shot 15 'look' (schematic). The scene agent replaces this whole file.
-FILM.scene({
-  id: 'look',
-  draw(ctx, t, info) {
-    const L = info.lib, P = L.pal;
-    const p = L.clamp(t / info.dur);
-    L.blueprint(ctx);
-    L.guideCircle(ctx, 540, 860, 340, { alpha: 0.4 });
-    L.glowDot(ctx, 540, 860, 10 + 8 * p, { rays: 12, rot: p * Math.PI });
-    L.text(ctx, 'STUB 15', 540, 330, { size: 60, weight: 600, align: 'center', color: P.magenta });
-    L.text(ctx, info.shot.title || 'look', 540, 1420, { size: 44, align: 'center', color: P.lavender });
-    L.text(ctx, 'look', 540, 1480, { size: 30, align: 'center', color: P.lavender, alpha: 0.6 });
-    ctx.fillStyle = P.lineWhite;
-    ctx.fillRect(140, 1526, 800 * p, 6);
-  },
-});
+(function () {
+  'use strict';
+  const ID = 'look';
+  const FILM = window.FILM;
+  const K = FILM.kit;
+  const E = FILM.lib.ease;
+  const clamp = (v, lo = 0, hi = 1) => (v < lo ? lo : v > hi ? hi : v);
+  FILM.scene({
+    id: ID,
+    draw(ctx, tIn, info) {
+      const t = clamp(tIn, 0, info.dur);
+      const T = info.shot.start + t;
+      K.city(ctx, { pos: [-0.9, 1.62, 214.6], yaw: 0.1, pitch: 0.05, f: 1100 }, K.T_PRESS, {});
+      const turn = E.inOutCubic(clamp(Math.floor((T - 28.333) * 12 + 1e-6) / 6 / 0.9999));
+      const gaze = clamp(Math.floor((T - 28.833) * 12 + 1e-6 + 1) / 3);
+      K.head(ctx, 540, 820, 500 + 40 * E.inOutSine(t / info.dur), { dir: -1, body: 'back', turn, gaze, expr: {}, light: { front: -1, amt: 0.8 }, rim: 1 });
+    },
+  });
+})();

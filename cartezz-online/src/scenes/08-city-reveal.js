@@ -1,17 +1,13 @@
-// STUB
-// Placeholder for shot 08 'city-reveal' (schematic). The scene agent replaces this whole file.
 FILM.scene({
   id: 'city-reveal',
-  draw(ctx, t, info) {
-    const L = info.lib, P = L.pal;
-    const p = L.clamp(t / info.dur);
-    L.blueprint(ctx);
-    L.guideCircle(ctx, 540, 860, 340, { alpha: 0.4 });
-    L.glowDot(ctx, 540, 860, 10 + 8 * p, { rays: 12, rot: p * Math.PI });
-    L.text(ctx, 'STUB 08', 540, 330, { size: 60, weight: 600, align: 'center', color: P.magenta });
-    L.text(ctx, info.shot.title || 'city-reveal', 540, 1420, { size: 44, align: 'center', color: P.lavender });
-    L.text(ctx, 'city-reveal', 540, 1480, { size: 30, align: 'center', color: P.lavender, alpha: 0.6 });
-    ctx.fillStyle = P.lineWhite;
-    ctx.fillRect(140, 1526, 800 * p, 6);
+  draw(ctx, tIn, info) {
+    const L = info.lib, K = FILM.kit;
+    const t = L.clamp(tIn, 0, info.dur);
+    const p = L.ease.inOutSine(t / info.dur);
+    const cam = K.lerpCam({ pos: [0, 1.1, 18], yaw: 0, pitch: 0.2, f: 1050 }, { pos: [0, 1.1, 20.5], yaw: 0, pitch: 0.2, f: 1050 }, p);
+    const T = info.T;
+    K.city(ctx, cam, T, {
+      extra: (c, C) => K.figure(c, C, 0, 34, { walk: T >= 15.333 ? (T - 15.333) / (2 * K.B) : null }),
+    });
   },
 });

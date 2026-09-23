@@ -34,10 +34,14 @@
     // Master tilt EQ in dB: a low shelf under the subs, presence and air for phone speakers.
     eq: { low: -4, presence: 5, air: 3 },
     comp: { threshold: -18, knee: 10, ratio: 2, attack: 0.006, release: 0.2 },
-    // Section fader rides in dB at global times, pre-compressor: quiet egg, hushed pupa, full drop,
-    // hushed winter, and an ending level that meets the opening level at the loop seam.
-    // Per film: section fader rides in dB at global times, pre-compressor (see reference/music.md).
-    ride: [[0, 0]],
+    // Section fader rides in dB at global times, pre-compressor: a hushed profile, the dings a little
+    // up, full at the break and at the profile-sky peak, down right after the press so every tail
+    // falls away, and the final ding at exactly the level of the first one (5.333 and 33.333).
+    ride: [
+      [0, -8], [5.25, -8], [5.333, -5], [7.9, -5], [8.0, -3.5], [10.55, -3], [10.667, -1],
+      [13.2, -0.5], [13.333, -1], [18.55, -1], [18.667, -2], [21.25, -2.5], [21.333, -1.5],
+      [26.6, -1.5], [26.667, 0], [26.75, 0], [27.3, -8], [29.25, -8], [29.333, -4], [31.9, -4], [32.0, -14], [33.2, -14], [33.3, -5], [34.7, -5],
+    ],
   };
 
   // ---------------------------------------------------------------- pitch
@@ -1268,6 +1272,260 @@
       I.nz(t0, len, { type: 'bandpass', q: 0.45, f, type2: 'lowpass', f2: o.lp || 2600, amp, stereo: true, sustain: true, bus: 'amb', key: 'wind' });
     };
 
+    // ---- voices added for CARTEZZ // ONLINE
+
+    // Generic tone: one oscillator per harmonic (o.h: [[ratio, amp]]), frequency and amplitude
+    // envelopes (env pts, the last amp point ends the voice), optional lowpass (o.lp), wave (o.wave).
+    I.tone = (t, len, fEnv, amp, o) => {
+      o = o || {};
+      const V = E.voice(t, len, o.sustain !== false);
+      if (!V) return;
+      const g = E.gain(0);
+      V.env(g.gain, amp);
+      let head = g;
+      if (o.lp) {
+        const lp = E.filt('lowpass', o.lp, o.q || 0.7);
+        lp.connect(g);
+        head = lp;
+      }
+      for (const [k, a] of o.h || [[1, 1]]) {
+        const s = E.osc(o.wave || 'sine', fEnv[0][1] * k);
+        V.env(s.frequency, fEnv.map(([dt, f, sh]) => [dt, f * k, sh]));
+        const sg = E.gain(a);
+        s.connect(sg);
+        sg.connect(head);
+        V.osc(s);
+      }
+      E.out(g, o.bus || 'sfx', o);
+    };
+
+    // Pad bed with free amplitude and cutoff envelopes (env pts), warm-saw pairs or hushed sines.
+    I.bed = (t, len, notes, amp, o) => {
+      o = o || {};
+      const V = E.voice(t, len, true);
+      if (!V) return;
+      const cut = o.cut || [[0, 800]];
+      const lp = E.filt('lowpass', cut[0][1], o.q || 0.6);
+      V.env(lp.frequency, cut);
+      const g = E.gain(0);
+      V.env(g.gain, amp);
+      lp.connect(g);
+      E.out(g, o.bus || 'pad', o);
+      const per = 1 / Math.sqrt(notes.length * 2);
+      notes.forEach((nm, i) => {
+        for (const side of o.sine ? [0] : [-1, 1]) {
+          const s = E.osc(o.sine ? 'sine' : E.warmSaw, hz(nm));
+          s.detune.value = side * (o.detune || 7) + (i % 2 ? 1.5 : -1.5);
+          const sg = E.gain(per * (o.sine ? 1.4 : 1));
+          const p = E.panner(side * (o.width === undefined ? 0.5 : o.width) * (i % 2 ? 0.8 : 1));
+          s.connect(sg);
+          sg.connect(p);
+          p.connect(lp);
+          V.osc(s);
+        }
+      });
+    };
+
+    // Choir-like pad: three detuned saws per note with a slow shared vibrato, through an "ah" formant bank.
+    I.choir = (t, len, notes, amp, o) => {
+      o = o || {};
+      const V = E.voice(t, len, true);
+      if (!V) return;
+      const g = E.gain(0);
+      V.env(g.gain, amp);
+      const mix = E.gain(1);
+      const lp = E.filt('lowpass', o.lp || 3600, 0.5);
+      for (const [f, q, a] of [
+        [350, 2, 0.35],
+        [730, 5, 1],
+        [1090, 6, 0.55],
+        [2440, 8, 0.22],
+      ]) {
+        const bp = E.filt('bandpass', f, q);
+        const bg = E.gain(a * 2.4);
+        mix.connect(bp);
+        bp.connect(bg);
+        bg.connect(lp);
+      }
+      lp.connect(g);
+      E.out(g, o.bus || 'pad', o);
+      const lfo = E.osc('sine', 4.9);
+      const lg = E.gain(0);
+      V.env(lg.gain, [[0, 0], [Math.min(0.8, len * 0.5), 10, 'lin']]); // cents, delayed vibrato
+      lfo.connect(lg);
+      V.osc(lfo);
+      const per = 0.7 / Math.sqrt(notes.length * 3);
+      notes.forEach((nm, i) => {
+        for (const d of [-9, 0, 9]) {
+          const s = E.osc('sawtooth', hz(nm));
+          s.detune.value = d + (i % 2 ? 2 : -2);
+          lg.connect(s.detune);
+          const sg = E.gain(per);
+          const p = E.panner((d / 12) * (o.width === undefined ? 0.8 : o.width));
+          s.connect(sg);
+          sg.connect(p);
+          p.connect(mix);
+          V.osc(s);
+        }
+      });
+    };
+
+    // Ostinato bass: two warm saws and a sine through a closing lowpass.
+    I.bassNote = (t, note, len, vel, o) => {
+      o = o || {};
+      const f = hz(note);
+      const V = E.voice(t, len + 0.08, false);
+      if (!V) return;
+      const lp = E.filt('lowpass', 900, o.q || 2.2);
+      V.env(lp.frequency, [[0, o.bright || 1100], [0.12, Math.max(170, f * 2.4), 'exp'], [len + 0.08, Math.max(120, f * 1.6), 'exp']]);
+      const g = E.gain(0);
+      V.env(g.gain, [[0, 0], [0.004, vel], [len * 0.7, vel * 0.6, 'exp'], [len + 0.06, FLOOR, 'exp']]);
+      const a = E.osc(E.warmSaw, f);
+      a.detune.value = -4;
+      const b = E.osc(E.warmSaw, f);
+      b.detune.value = 5;
+      const s = E.osc('sine', f);
+      const sg = E.gain(0.9);
+      a.connect(lp);
+      b.connect(lp);
+      s.connect(sg);
+      sg.connect(g);
+      lp.connect(g);
+      E.out(g, 'bass', o);
+      V.osc(a);
+      V.osc(b);
+      V.osc(s);
+    };
+
+    // Felt heartbeat: lub-dub.
+    I.heart = (t, vel) => {
+      I.kick(t, vel, 'heart');
+      I.kick(t + 0.2, vel * 0.45, 'heart');
+    };
+
+    // Soft footstep on a hard street: heel thud, scuff, a little grit.
+    I.step = (t, vel, pan) => {
+      const V = E.voice(t, 0.16, false);
+      if (!V) return;
+      const s = E.osc('sine', 115);
+      V.env(s.frequency, [[0, 115], [0.04, 58, 'exp']]);
+      const g = E.gain(0);
+      V.env(g.gain, perc(vel, 0.003, 0.11));
+      s.connect(g);
+      E.out(g, 'sfx', { pan });
+      V.osc(s);
+      I.nz(t, 0.14, { type: 'bandpass', q: 0.9, f: [[0, 1500], [0.1, 600, 'exp']], amp: [[0, 0], [0.004, vel * 0.5], [0.03, vel * 0.22, 'exp'], [0.13, FLOOR, 'exp']], pan, key: 'step', room: 0.25 });
+      I.nz(t + 0.035, 0.06, { type: 'highpass', q: 0.7, f: [[0, 3800]], amp: perc(vel * 0.16, 0.002, 0.03), pan, key: 'grit' });
+    };
+
+    // Dark metallic tick: inharmonic FM ping plus a narrow noise tick.
+    I.metal = (t, vel, pan) => {
+      I.fmBell(t, 1850, vel, { ratio: 3.73, index: 2.2, dec: 0.16, bus: 'perc', pan, room: 0.2 });
+      I.nz(t, 0.05, { type: 'bandpass', q: 3, f: [[0, 6200]], amp: perc(vel * 0.8, 0.0006, 0.02), pan, bus: 'perc', key: 'metal' });
+    };
+
+    // Air whoosh: band-passed stereo noise f0 -> fp (at pk seconds) -> f1, optional pan sweep and sub body.
+    I.whoosh = (t, len, vel, o) => {
+      o = o || {};
+      const pk = o.pk || len * 0.4;
+      I.nz(t, len, {
+        type: 'bandpass',
+        q: o.q || 0.9,
+        f: [[0, o.f0 || 300], [pk, o.fp || 1400, 'exp'], [len, o.f1 || 500, 'exp']],
+        amp: [[0, 0], [o.att || 0.02, vel * 0.25], [pk, vel, 'lin'], [len, FLOOR, 'exp']],
+        panEnv: o.pan ? [[0, -o.pan], [len, o.pan, 'lin']] : null,
+        stereo: true,
+        bus: 'sfx',
+        hall: o.hall || 0.15,
+        key: o.key || 'whoosh',
+      });
+      if (o.body) I.tone(t, len, [[0, o.body], [len, o.body * 0.6, 'exp']], [[0, 0], [pk, vel * 0.5], [len, FLOOR, 'exp']], { bus: 'bass', sustain: false });
+    };
+
+    // THE notification tone: FM bell (harmonic ratio) + glass, one pitch. o: pan, dry, dec, hall, delay, bus.
+    I.dingTone = (t, f, vel, o) => {
+      o = o || {};
+      const dry = !!o.dry;
+      const sends = dry ? { room: 0.05 } : { hall: o.hall === undefined ? 0.28 : o.hall, delay: o.delay === undefined ? 0.1 : o.delay };
+      const base = Object.assign({ pan: o.pan || 0, bus: o.bus || 'sfx' }, sends);
+      const dec = (o.dec || 1.4) * (dry ? 0.6 : 1);
+      I.fmBell(t, f, vel * 0.5, Object.assign({ ratio: 2, index: 1.3, dec }, base));
+      I.glass(t, f, vel * 0.5, Object.assign({ dec: dec * 0.9 }, base));
+      I.glass(t, f * 2, vel * 0.07, Object.assign({ dec: dec * 0.3 }, base));
+    };
+    // THE notification ding: E6 then B6 a 32nd later.
+    I.ding = (t, vel, o) => {
+      I.dingTone(t, hz('E6'), vel, o);
+      I.dingTone(t + 1 / 12, hz('B6'), vel * 0.9, o);
+    };
+
+    // Glass shimmer: a quick run of glass pings, alternating sides.
+    I.shimmer = (t, notes, step, vel, o) =>
+      notes.forEach((nm, i) => I.glass(t + i * step, hz(nm), vel * (1 - i * 0.07), Object.assign({ dec: 1.3, pan: (i % 2 ? 1 : -1) * 0.45, hall: 0.3 }, o || {})));
+
+    // Band-limited crash: stereo noise between 4.2 and 11 kHz, so it does not pile energy near Nyquist
+    // into the limiter (the stock crash is highpass-only).
+    I.cymbal = (t, vel, o) => {
+      o = o || {};
+      const dec = o.dec || 1.8;
+      I.nz(t, dec + 0.05, {
+        type: 'highpass',
+        q: 0.6,
+        f: [[0, 4200]],
+        type2: 'lowpass',
+        f2: o.lp || 11000,
+        amp: [[0, 0], [0.003, vel], [0.12, vel * 0.45, 'exp'], [dec, FLOOR, 'exp']],
+        stereo: true,
+        bus: 'perc',
+        hall: o.hall || 0.15,
+        key: o.key || 'cymbal',
+      });
+    };
+
+    // Pre-rendered grain texture (clicks, crackle, shards).
+    I.grains = (t, secs, key, grains, vel, o) => I.play(t, secs, () => grainBuffer(ctx, key, secs, grains), vel, o);
+
+    // THE press: a deep tock, a sub thump and a mechanical clack-latch.
+    I.press = (t, vel) => {
+      const V = E.voice(t, 0.8, false);
+      if (!V) return;
+      const s = E.osc('sine', 170);
+      V.env(s.frequency, [[0, 170], [0.045, 58, 'exp'], [0.7, 44, 'exp']]);
+      const g = E.gain(0);
+      V.env(g.gain, [[0, 0], [0.0015, vel], [0.09, vel * 0.5, 'exp'], [0.7, FLOOR, 'exp']]);
+      s.connect(g);
+      E.out(g, 'drums');
+      V.osc(s);
+      I.tone(t, 0.9, [[0, 54], [0.6, 40, 'exp']], [[0, 0], [0.006, vel * 0.9], [0.25, vel * 0.45, 'exp'], [0.85, FLOOR, 'exp']], { bus: 'bass', sustain: false, h: [[1, 1], [2, 0.25]] });
+      I.tock(t, vel * 0.7, 820, { bus: 'sfx', dec: 0.07, room: 0.15 });
+      I.nz(t, 0.06, { type: 'bandpass', q: 1.4, f: [[0, 2600]], amp: perc(vel * 1.2, 0.0004, 0.014), bus: 'sfx', key: 'clack', room: 0.2 });
+      I.nz(t + 0.028, 0.05, { type: 'bandpass', q: 2, f: [[0, 4200]], amp: perc(vel * 0.45, 0.0004, 0.01), bus: 'sfx', key: 'latch', room: 0.2 });
+    };
+
+    // Tape rewind: a chattering saw diving in pitch, chopped by a slowing reel flutter.
+    I.rewind = (t, len, vel) => {
+      const V = E.voice(t, len + 0.02, true);
+      if (!V) return;
+      const s = E.osc('sawtooth', 1800);
+      V.env(s.frequency, [[0, 1800], [len, 55, 'exp']]);
+      const am = E.gain(0.5);
+      const lfo = E.osc('square', 46);
+      V.env(lfo.frequency, [[0, 46], [len, 7, 'exp']]);
+      const lg = E.gain(0.5);
+      lfo.connect(lg);
+      lg.connect(am.gain);
+      const bp = E.filt('bandpass', 3000, 1.1);
+      V.env(bp.frequency, [[0, 3200], [len, 240, 'exp']]);
+      const g = E.gain(0);
+      V.env(g.gain, [[0, 0], [0.08, vel * 0.5], [len * 0.55, vel, 'lin'], [len - 0.06, vel * 0.5, 'lin'], [len, FLOOR, 'exp']]);
+      s.connect(am);
+      am.connect(bp);
+      bp.connect(g);
+      E.out(g, 'sfx', { pan: 0.1 });
+      V.osc(s);
+      V.osc(lfo);
+    };
+
     return I;
   }
 
@@ -1309,34 +1567,302 @@
   }
 
   // ---------------------------------------------------------------- the score
-  // DEMO SCORE — replace wholesale when composing the film. It gives the stub pass a pulse and
-  // shows the engine idiom: instruments take absolute global times, score() is re-invoked per bar
-  // and the engine windows each call, so scheduling the whole piece here is correct. Everything
-  // below derives from FILM.TIMELINE, so it runs at any bpm and duration.
+  // CARTEZZ // ONLINE. 90 bpm, 13 bars, D minor world (D dorian: the ding's B natural belongs).
+  // Every cue in FILM.TIMELINE.cues is implemented by hand at the same frame-snapped time, b(n).
+  // Acts: 1 profile (pulse, UI) | 2 the notification (ding, flood) | 3 the break | 4 the walk, the
+  // awe | 5 the button (peak, pause, press) | 6 silence | 7 pull-back, black, one ding.
   const CH = {
-    home: ['D3', 'A3', 'D4', 'F#4'],
-    away: ['G3', 'B3', 'D4', 'G4'],
+    open: ['D3', 'A3', 'D4'], // hushed open fifth: the dark ambient bed
+    notif: ['E4', 'B4'], // the ding's colour over D: D lydian (E pentatonic sits inside it)
+    low: ['D2', 'A2', 'D3', 'F3'], // the world break, low
+    dm: ['D3', 'F3', 'A3', 'C4', 'E4'], // Dm9
+    bb: ['Bb2', 'F3', 'A3', 'D4'], // Bbmaj7
+    c: ['C3', 'G3', 'C4', 'E4'], // C
+    wonder: ['D3', 'A3', 'E4', 'F#4', 'C#5'], // Dmaj9: the awe
+    wonderChoir: ['A3', 'D4', 'F#4', 'A4'],
+    lift: ['B2', 'G3', 'D4', 'F#4', 'B4'], // Gmaj7/B: the smile
+    liftChoir: ['B3', 'D4', 'F#4', 'G4'],
   };
+  const BASS = {
+    dm: ['D2', 'D2', 'A2', 'D2', 'D2', 'C3', 'A2', 'F2'],
+    bb: ['Bb1', 'Bb1', 'F2', 'Bb1'],
+    c: ['C2', 'C2', 'G2', 'E2'],
+  };
+  const PENTA = ['E6', 'F#6', 'G#6', 'B6', 'C#7'];
 
   function score(E, I) {
-    const { kick, hat, kalimba, pad, sub } = I;
-    const bpm = (FILM.TIMELINE && FILM.TIMELINE.bpm) || 120;
-    const DUR = (FILM.TIMELINE && FILM.TIMELINE.duration) || 32;
-    const BAR = 240 / bpm;
-    const BEAT = 60 / bpm;
-    const motif = ['D5', 'F#5', 'A5', 'E5'];
-    for (let beat = 0; beat * BEAT < DUR - 1e-9; beat++) {
-      const t = Math.round(beat * BEAT * 1000) / 1000;
-      const down = beat % 4 === 0;
-      kick(t, down ? 0.8 : 0.5, down ? 'full' : 'felt');
-      hat(t + BEAT / 2, 0.1);
-      kalimba(t + BEAT / 2, hz(motif[beat % 4]), 0.2, { hall: 0.15, delay: 0.1, pan: beat % 2 ? 0.15 : -0.15 });
-      if (down) {
-        const home = beat % 8 === 0;
-        pad(t, Math.min(t + BAR, DUR), home ? CH.home : CH.away, 0.28, { att: 0.05, rel: 0.1, cut0: 900, cut1: 1400, hall: 0.15 });
-        sub(t, Math.min(t + BAR, DUR), home ? 'D2' : 'G1', 0.4, { att: 0.02, rel: 0.08 });
+    const { kick, hat, tock, glass, glock, marimba, kalimba, gong, sub, subDrop, whump, bleep, chew, buzz, revSwell, nz, lead } = I;
+    const BEAT = 60 / FILM.TIMELINE.bpm;
+    const b = (n) => Math.round(n * BEAT * 24) / 24; // the timeline's frame-snapped beat grid
+    const S16 = BEAT / 4;
+    const S8 = BEAT / 2;
+    const r = (...k) => E.rng(...k);
+    const ctx = E.ctx;
+    // A chord segment of the groove pad, crossfading into the next one.
+    const padSeg = (t0, t1, notes, vel, cut, o) =>
+      I.bed(t0, t1 - t0 + 0.25, notes, [[0, 0], [0.12, vel], [t1 - t0, vel * 0.95, 'lin'], [t1 - t0 + 0.25, 0, 'lin']], Object.assign({ cut: [[0, cut]], hall: 0.12 }, o || {}));
+    const bassBar = (t0, pat, vel) => pat.forEach((nm, k) => I.bassNote(t0 + k * S8, nm, S8 * 0.92, vel * (k % 4 === 0 ? 1 : k % 2 ? 0.72 : 0.85)));
+
+    // ================================================================ ACT 1 — the profile (0 – 5.333)
+    // The dark bed: a hushed open fifth on D, swelling a little at 2.667, carrying on under the
+    // notifications until the break cuts it.
+    I.bed(0, b(16), CH.open, [[0, 0], [2.0, 0.15], [b(4), 0.15], [b(5.5), 0.21], [b(8), 0.2], [b(12), 0.22], [b(15), 0.26], [b(16) - 0.02, 0.28], [b(16), 0]], {
+      cut: [[0, 380], [b(4), 420], [b(5.5), 650], [b(12), 900, 'exp'], [b(16), 1600, 'exp']],
+      hall: 0.2,
+    });
+    // Felt heartbeat every 2 beats.
+    for (const n of [0, 2, 4, 6, 8, 10, 14]) I.heart(b(n), n < 8 ? 0.5 : 0.45);
+    // 0.333 soft UI tick: corner brackets.
+    tock(b(0.5), 0.13, 3300, { bus: 'sfx', dec: 0.025, room: 0.35, pan: -0.2 });
+    // 0.667 low glass tone D4: the phone frame.
+    glass(b(1), hz('D4'), 0.34, { dec: 3.2, hall: 0.3 });
+    glass(b(1), hz('D5'), 0.05, { dec: 1.2, hall: 0.3 });
+    // 1.333 sine bloom A4: the avatar ring.
+    I.tone(b(2), 3.2, [[0, hz('A4')]], [[0, 0], [0.28, 0.12], [3.2, FLOOR, 'exp']], { bus: 'bells', h: [[1, 1], [2, 0.12]], hall: 0.35 });
+    // 2.0 seven key clicks on 16ths: the name types.
+    for (let k = 0; k < 7; k++) {
+      const q = r('key', k);
+      const pan = (q() * 2 - 1) * 0.3;
+      tock(b(3) + k * S16, 0.1 + q() * 0.04, 2600 + q() * 900, { bus: 'sfx', dec: 0.018, pan, room: 0.2 });
+      chew(b(3) + k * S16, 0.05, pan);
+    }
+    // 2.667 a low drone D2 enters under the pad (to the break).
+    I.bed(b(4), b(16) - b(4), ['D2'], [[0, 0], [1.4, 0.2], [b(8) - b(4), 0.24], [b(12) - b(4), 0.3], [b(16) - b(4) - 0.02, 0.32], [b(16) - b(4), 0]], { bus: 'amb', cut: [[0, 230]], detune: 5 });
+    // 3.333 a soft pitched pulse A3, long tail: the focus ring.
+    marimba(b(5), hz('A3'), 0.22, { dec: 1.4, hall: 0.3 });
+    I.tone(b(5), 3.4, [[0, hz('A3')]], [[0, 0], [0.006, 0.15], [3.4, FLOOR, 'exp']], { bus: 'keys', hall: 0.3 });
+    // 4.0 blip E5, 4.667 blip B4: the 2 and its blink.
+    bleep(b(6), hz('E5'), 0.24);
+    bleep(b(7), hz('B4'), 0.2);
+
+    // ================================================================ ACT 2 — the notification (5.333 – 10.667)
+    // THE ding, then three more.
+    I.ding(b(8), 0.85);
+    I.ding(b(10), 0.75, { pan: -0.35 });
+    I.ding(b(11), 0.65, { pan: 0.4 });
+    I.ding(b(11.5), 0.5, { pan: -0.45 });
+    // The ding's colour over the bed (D lydian), glassy and hushed.
+    I.bed(b(8), b(16) - b(8), CH.notif, [[0, 0], [2.4, 0.06], [b(12) - b(8), 0.08], [b(16) - b(8) - 0.02, 0.12], [b(16) - b(8), 0]], { sine: true, cut: [[0, 3000]], hall: 0.25 });
+    // Quiet hats on 8ths from 6.667, 16ths through the flood.
+    for (let k = 0; k < 4; k++) hat(b(10) + k * S8, k % 2 ? 0.05 : 0.07);
+    for (let k = 0; k < 12; k++) hat(b(12) + k * S16, k % 2 ? 0.06 : 0.09);
+    // 8.0 the flood: a full ding on the downbeat, then single dings on 16ths, then on 32nds, seeded
+    // pitches across E pentatonic and seeded pans.
+    I.ding(b(12), 0.7, { pan: 0.1, dec: 1.0 });
+    for (let k = 1; k < 11; k++) {
+      const q = r('flood', k);
+      const t = k < 4 ? b(12) + k * S16 : b(13) + (k - 4) * (S16 / 2);
+      const nm = PENTA[Math.floor(q() * PENTA.length)];
+      I.dingTone(t, hz(nm), 0.34 + 0.2 * q() + k * 0.012, { pan: (q() * 2 - 1) * 0.8, dec: 0.6, hall: 0.22, delay: 0.06 });
+    }
+    // Sub pulse on every beat of the flood.
+    for (const n of [12, 13]) {
+      kick(b(n), 0.5, 'heart');
+      sub(b(n), b(n) + 0.45, 'D2', 0.4, { att: 0.005, rel: 0.2 });
+    }
+    // 9.333 glass shimmer and glitch clicks as the gifts solidify (bursts on 16ths).
+    I.shimmer(b(14), ['E6', 'G#6', 'B6', 'E7', 'G#7', 'B7'], 1 / 24, 0.2);
+    {
+      const q = r('glitch');
+      const gr = [];
+      for (let k = 0; k < 8; k++) {
+        const t0 = k * S16;
+        const n = k === 0 ? 6 : 2 + Math.floor(q() * 4);
+        for (let j = 0; j < n; j++)
+          gr.push({ t: j === 0 ? t0 : t0 + q() * 0.035, dur: 0.008, amp: (j === 0 ? (k === 0 ? 1 : 0.5) : 0.25 * (0.3 + 0.7 * q())) * (1 - k * 0.06), pan: (q() * 2 - 1) * 0.8, f: 2500 + q() * 6000, q: 1.3, att: 0.0003, dec: 0.0016 });
+      }
+      I.grains(b(14), 1.4, 'glitch', gr, 0.9, { bus: 'sfx', room: 0.15 });
+    }
+    // 10.0 reverse swell and a riser climbing a fifth (D4 -> A4) into the break; a snap starts it.
+    tock(b(15), 0.16, 2900, { bus: 'sfx', dec: 0.02, room: 0.2 });
+    revSwell(b(15), b(16) - b(15), 0.42, { fTop: 5000, hall: 0.12 });
+    I.tone(b(15), b(16) - b(15), [[0, hz('D4')], [b(16) - b(15), hz('A4'), 'exp']], [[0, 0], [0.01, 0.03], [b(16) - b(15) - 0.01, 0.1, 'exp'], [b(16) - b(15), 0, 'lin']], { wave: 'sawtooth', lp: 2400, bus: 'lead', h: [[1, 1], [1.004, 0.8]] });
+
+    // ================================================================ ACT 3 — the world breaks (10.667 – 13.333)
+    {
+      const t = b(16);
+      kick(t, 0.85, 'full');
+      E.duck(t, 0.7);
+      subDrop(t, hz('D2'), 30, 1.8, 0.7);
+      whump(t, 0.7);
+      I.cymbal(t, 0.4, { dec: 2.6, key: 'breakcym' });
+      nz(t, 1.8, { type: 'lowpass', q: 0.8, f: [[0, 9000], [1.6, 300, 'exp']], amp: perc(0.4, 0.002, 1.5), stereo: true, bus: 'sfx', hall: 0.3, key: 'breakcrash' });
+      // Glass burst: bright pings and shards spraying out.
+      ['D7', 'A6', 'E7', 'F#7', 'A7', 'D6'].forEach((nm, i) => glass(t + i * 0.011, hz(nm), 0.16 - i * 0.015, { dec: 1.1, pan: (i % 2 ? 1 : -1) * (0.3 + i * 0.1), hall: 0.35 }));
+      {
+        const q = r('shards');
+        const gr = [];
+        for (let j = 0; j < 40; j++) gr.push({ t: j === 0 ? 0 : Math.pow(q(), 1.8) * 0.5, dur: 0.02, amp: 0.3 * (0.3 + 0.7 * q()), pan: (q() * 2 - 1) * 0.9, f: 4000 + q() * 7000, q: 4, att: 0.0003, dec: 0.004 });
+        I.grains(t, 0.6, 'shards', gr, 0.8, { bus: 'sfx', hall: 0.2 });
       }
     }
+    // The low world grows: dark pad opening up, a D1 sub floor, kick on 1 and 3.
+    I.bed(b(16), b(20) - b(16) + 0.2, CH.low, [[0, 0], [0.5, 0.2], [b(20) - b(16), 0.3, 'lin'], [b(20) - b(16) + 0.2, 0]], { cut: [[0, 260], [b(20) - b(16), 1000, 'exp']], hall: 0.2 });
+    sub(b(16), b(20), 'D1', 0.3, { att: 0.9, rel: 0.1 });
+    kick(b(18), 0.85, 'full');
+    E.duck(b(18), 0.5);
+    // 11.333 deep rising grinds: the towers rise.
+    I.play(b(17), 1.9, () => creakBuffer(ctx, 'grind', 1.9, 26, 70, [[110, 0.02, 1], [240, 0.012, 0.5], [520, 0.006, 0.2]]), 0.16, { bus: 'sfx', hall: 0.2, filt: ['lowpass', 1400, 0.7] });
+    nz(b(17), 1.95, { type: 'bandpass', q: 2.5, f: [[0, 90], [1.9, 420, 'exp']], amp: [[0, 0], [1.6, 0.4, 'lin'], [1.95, FLOOR, 'exp']], stereo: true, bus: 'sfx', hall: 0.15, key: 'grind' });
+    // 12.0 searchlight thoom (low gong).
+    gong(b(18), hz('D2'), 0.55, { dec: 3.0, hall: 0.3 });
+    // 12.667 the first metal tick and a 16th pickup into the groove.
+    I.metal(b(19), 0.12, 0.2);
+    I.metal(b(19.5), 0.07, -0.2);
+    I.metal(b(19.75), 0.09, 0.2);
+    for (let k = 0; k < 4; k++) hat(b(18) + k * S8, 0.06);
+
+    // ================================================================ ACT 4 — the walk (13.333 – 18.667)
+    // Bass ostinato on 8ths, dark pad, kick 1 and 3, metal 2 and 4, hats, the ding motif on offbeats.
+    bassBar(b(20), BASS.dm, 0.55);
+    bassBar(b(24), BASS.bb, 0.55);
+    bassBar(b(26), BASS.c, 0.55);
+    padSeg(b(20), b(24), CH.dm, 0.22, 850);
+    padSeg(b(24), b(26), CH.bb, 0.22, 850);
+    padSeg(b(26), b(28), CH.c, 0.22, 950);
+    for (let n = 20; n < 28; n++) {
+      if (n % 2 === 0) {
+        kick(b(n), 0.82, 'full');
+        E.duck(b(n), 0.55);
+      } else I.metal(b(n), n < 24 ? 0.09 : 0.15, n % 4 === 1 ? -0.2 : 0.2);
+      hat(b(n) + S8, 0.07);
+      if (n >= 24) hat(b(n), 0.035);
+    }
+    // The ding as a quiet melodic motif on offbeats (E–B, the ding's interval, then D dorian).
+    ['E6', 'B6', 'A6', 'E6', 'D6', 'A6', 'G6', 'E6'].forEach((nm, k) => I.dingTone(b(20 + k) + S8, hz(nm), 0.2, { pan: k % 2 ? 0.3 : -0.3, dec: 0.9, hall: 0.25, delay: 0.14, bus: 'bells' }));
+    // 14.667 and 17.333 arrival whooshes (deep; the white cap lighter).
+    I.whoosh(b(22), 1.3, 0.34, { f0: 180, fp: 900, f1: 260, pk: 0.4, pan: 0.5, body: 70, key: 'bowtie' });
+    I.whoosh(b(26), 1.1, 0.28, { f0: 260, fp: 1500, f1: 400, pk: 0.35, pan: -0.5, key: 'cap' });
+    // 15.333 the first footstep, then one on every beat while he walks.
+    for (let n = 23; n <= 27; n++) I.step(b(n), 0.32, n % 2 ? -0.08 : 0.08);
+    // 18.0 hologram flicker: crackle, buzz, a rising filtered swell (hard stop into 18.667).
+    {
+      const q = r('crackle');
+      const gr = [];
+      for (let j = 0; j < 55; j++) gr.push({ t: j === 0 ? 0 : Math.pow(q(), 0.8) * 0.62, dur: 0.01, amp: j === 0 ? 0.5 : 0.28 * (0.3 + 0.7 * q()), pan: (q() * 2 - 1) * 0.7, f: 1800 + q() * 6000, q: 1.5, att: 0.0003, dec: 0.002 });
+      I.grains(b(27), 0.66, 'crackle', gr, 0.85, { bus: 'sfx', room: 0.2 });
+    }
+    buzz(b(27), 0.62, 0.1);
+    nz(b(27), b(28) - b(27) - 0.03, { type: 'bandpass', q: 3, f: [[0, 300], [0.63, 3200, 'exp']], amp: [[0, 0], [0.6, 0.22, 'exp'], [b(28) - b(27) - 0.03, FLOOR, 'lin']], stereo: true, sustain: true, bus: 'sfx', hall: 0.2, key: 'holoswell' });
+    // Hologram hum, on from the flicker through the awe.
+    I.tone(b(27), b(32) - b(27), [[0, 100]], [[0, 0], [0.5, 0.045], [b(32) - b(27) - 0.4, 0.03, 'lin'], [b(32) - b(27), 0, 'lin']], { wave: 'sawtooth', lp: 520, bus: 'amb', h: [[1, 1], [1.5, 0.3]] });
+
+    // ================================================================ the awe (18.667 – 21.333)
+    // The groove drops. A warm open Dmaj9 swell with a choir-like pad; a felt touch and a mallet dyad.
+    {
+      const t = b(28);
+      kick(t, 0.42, 'heart');
+      marimba(t, hz('D4'), 0.26, { dec: 1.8, hall: 0.35 });
+      marimba(t, hz('A4'), 0.18, { dec: 1.6, hall: 0.35 });
+      const L = b(31) - t;
+      I.bed(t, L + 0.6, CH.wonder, [[0, 0], [0.9, 0.3], [L, 0.32, 'lin'], [L + 0.6, 0, 'lin']], { cut: [[0, 500], [1.2, 2000, 'exp']], hall: 0.3 });
+      I.choir(t, L + 0.6, CH.wonderChoir, [[0, 0], [1.2, 0.2], [L, 0.22, 'lin'], [L + 0.6, 0, 'lin']], { hall: 0.35 });
+      sub(t, b(31) + 0.3, 'D2', 0.26, { att: 0.5, rel: 0.4 });
+    }
+    // 19.333 glass shimmer: surprise.
+    I.shimmer(b(29), ['F#6', 'A6', 'C#7', 'E7', 'F#7', 'A7'], 0.045, 0.13);
+    // 20.0 the ding motif slow, like a music box: B5, E6.
+    for (const [n, nm] of [[30, 'B5'], [30.5, 'E6']]) {
+      glock(b(n), hz(nm), 0.3, { dec: 1.7, hall: 0.3, delay: 0.1 });
+      tock(b(n), 0.03, 4200, { bus: 'sfx', dec: 0.01 });
+    }
+    // 20.667 the chord lifts to Gmaj7/B: the smile.
+    {
+      const t = b(31);
+      const L = b(32) - t;
+      kalimba(t, hz('B4'), 0.26, { dec: 1.6, hall: 0.3 });
+      kalimba(t, hz('F#5'), 0.14, { dec: 1.4, hall: 0.3, pan: 0.25 });
+      I.bed(t, L + 0.3, CH.lift, [[0, 0], [0.25, 0.32], [L, 0.34, 'lin'], [L + 0.3, 0, 'lin']], { cut: [[0, 1600], [L, 2600, 'exp']], hall: 0.3 });
+      I.choir(t, L + 0.3, CH.liftChoir, [[0, 0], [0.3, 0.22], [L, 0.24, 'lin'], [L + 0.3, 0, 'lin']], { hall: 0.35 });
+      sub(t, b(32), 'B1', 0.24, { att: 0.2, rel: 0.1 });
+      revSwell(b(31.5), b(32) - b(31.5), 0.3, { hi: true, hall: 0.1 });
+    }
+
+    // ================================================================ ACT 5 — the button (21.333 – 26.667)
+    // 21.333 the full groove returns bigger: crash, kick, bass (+ octave pluck), 16th hats, the ding
+    // motif as the lead, whooshes on 8ths for the arrivals.
+    {
+      const t = b(32);
+      I.cymbal(t, 0.42, { dec: 2.4, key: 'returncym' });
+      nz(t, 0.9, { type: 'lowpass', q: 0.7, f: [[0, 7000], [0.8, 500, 'exp']], amp: perc(0.22, 0.002, 0.8), stereo: true, bus: 'sfx', hall: 0.2, key: 'return' });
+      for (const [n, v] of [[32, 0.88], [33.5, 0.45], [34, 0.82], [35.5, 0.45]]) {
+        kick(b(n), v, 'full');
+        E.duck(b(n), v > 0.6 ? 0.6 : 0.3);
+      }
+      I.metal(b(33), 0.17, -0.2);
+      I.metal(b(35), 0.17, 0.2);
+      for (let k = 0; k < 16; k++) hat(b(32) + k * S16, k % 4 === 2 ? 0.11 : k % 2 ? 0.06 : 0.08, k === 14);
+      bassBar(b(32), BASS.dm.slice(0, 4).concat(['D2', 'C3', 'A2', 'F2']), 0.6);
+      bassBar(b(34), BASS.bb, 0.6);
+      bassBar(b(35), BASS.c, 0.6);
+      const oct = ['D3', 'D3', 'A3', 'D3', 'D3', 'C4', 'A3', 'F3', 'Bb2', 'Bb2', 'F3', 'Bb2', 'C3', 'C3', 'G3', 'E3'];
+      oct.forEach((nm, k) => I.pluck(b(32) + k * S8, nm, 0.12, { dec: 0.3, bright: 5 }));
+      padSeg(b(32), b(34), CH.dm, 0.26, 1300);
+      padSeg(b(34), b(35), CH.bb, 0.26, 1300);
+      padSeg(b(35), b(36) - 0.25, CH.c, 0.26, 1500);
+      // The ding motif as the lead line on 8ths (bell) with an FM lead an octave below.
+      const mel = ['E6', 'B6', 'A6', 'E6', 'F6', 'E6', 'D6', 'A5', 'F6', 'D6', 'A6', 'F6', 'G6', 'E6', 'C7', 'B6'];
+      mel.forEach((nm, k) => I.dingTone(b(32) + k * S8, hz(nm), k % 2 ? 0.26 : 0.32, { pan: k % 2 ? 0.2 : -0.2, dec: 0.8, hall: 0.25, delay: 0.1, bus: 'lead' }));
+      const low = (nm) => nm.replace(/\d$/, (d) => String(Number(d) - 1));
+      lead(mel.map((nm, k) => [b(32) + k * S8, low(nm), 0.03]), b(36) - 0.3, 0.1, { hall: 0.2 });
+      // Whooshes on the 8ths between kicks: new arrivals, alternating sides.
+      for (let k = 0; k < 8; k++) {
+        if (k === 0 || k === 4) continue;
+        const q = r('arrive', k);
+        I.whoosh(b(32) + k * S8, 0.32, 0.13 + q() * 0.05, { f0: 500 + q() * 300, fp: 2200 + q() * 1500, f1: 900, pk: 0.14, pan: k % 2 ? 0.6 : -0.6, hall: 0.1, key: 'arr' + k });
+      }
+      // Footsteps as he walks up to the button (stop at 24.0).
+      I.step(b(34), 0.3, 0.06);
+      I.step(b(35), 0.3, -0.06);
+      // 22.667 riser toward the button, cutting a frame before 24.0.
+      const rl = b(36) - b(34) - 0.04;
+      nz(b(34), rl, { type: 'bandpass', q: 1.8, f: [[0, 500], [rl, 7000, 'exp']], amp: [[0, 0.01], [rl - 0.01, 0.3, 'exp'], [rl, FLOOR, 'lin']], stereo: true, sustain: true, bus: 'sfx', key: 'riser' });
+      I.tone(b(34), rl, [[0, hz('A3')], [rl, hz('A4'), 'exp']], [[0, 0], [0.02, 0.02], [rl - 0.01, 0.09, 'exp'], [rl, 0, 'lin']], { wave: 'sawtooth', lp: 3000, bus: 'lead', h: [[1, 1], [1.006, 0.8]] });
+    }
+    // 24.0 sudden thinning: a sub pulse on each beat (a clock tick with it) and a held high A5.
+    for (let n = 36; n < 40; n++) {
+      kick(b(n), n === 36 ? 0.7 : 0.5, 'heart');
+      sub(b(n), b(n) + 0.4, 'A1', 0.42, { att: 0.004, rel: 0.2 });
+      tock(b(n), 0.1, 3400, { bus: 'sfx', dec: 0.02, pan: 0.12 });
+    }
+    // The tension tone: A5, climbing a semitone from 25.333, stopping dead on the press.
+    {
+      const L = b(40) - b(36);
+      I.tone(b(36), L, [[0, hz('A5')], [b(38) - b(36), hz('A5')], [L - 0.15, hz('A#5'), 'exp']], [[0, 0], [0.012, 0.045], [b(38) - b(36), 0.05, 'lin'], [L - 0.008, 0.085, 'exp'], [L, 0, 'lin']], { bus: 'sfx', h: [[1, 1], [2, 0.03]] });
+    }
+    // 25.333 reverse swell to the press (dry, so nothing rings on after it).
+    revSwell(b(38), b(40) - b(38), 0.55, { fTop: 6500, hall: 1e-4 });
+
+    // ================================================================ ACT 6 — everything stops (26.667 – 29.333)
+    I.press(b(40), 1);
+    // Then near silence: a very faint high room tone fading over about a second.
+    nz(b(40), 1.3, { type: 'highpass', q: 0.6, f: [[0, 5200]], type2: 'lowpass', f2: 11000, amp: [[0, 0], [0.04, 0.012], [1.25, FLOOR, 'exp']], stereo: true, bus: 'amb', key: 'roomtone' });
+    // 28.833 a barely audible sub breath as his eye lands: a sub swell and a whisper of air.
+    I.tone(b(43.25), 1.5, [[0, 40], [1.5, 35, 'exp']], [[0, 0], [0.22, 0.2], [1.5, FLOOR, 'exp']], { bus: 'bass', h: [[1, 1], [2, 0.35]] });
+    nz(b(43.25), 1.0, { type: 'bandpass', q: 0.8, f: [[0, 700], [1.0, 380, 'exp']], amp: [[0, 0], [0.025, 0.02], [0.2, 0.012, 'exp'], [1.0, FLOOR, 'exp']], stereo: true, bus: 'amb', key: 'breath' });
+
+    // ================================================================ ACT 7 — the reveal (29.333 – 34.667)
+    // 29.333 pull-back: a tape engages, reverse air rushes up, the rewind dives; both land at 31.333.
+    {
+      const t = b(44);
+      const L = b(47) - t;
+      tock(t, 0.3, 1500, { bus: 'sfx', dec: 0.035, room: 0.2 });
+      nz(t, 0.03, { type: 'bandpass', q: 2, f: [[0, 3800]], amp: perc(0.3, 0.0004, 0.008), bus: 'sfx', key: 'engage' });
+      nz(t, L, { type: 'bandpass', q: 0.6, f: [[0, 220], [L - 0.05, 5200, 'exp'], [L, 4000, 'lin']], amp: [[0, 0.002], [0.03, 0.03], [L - 0.03, 0.42, 'exp'], [L - 0.02, FLOOR, 'lin']], panEnv: [[0, 0.4], [L, -0.3, 'lin']], stereo: true, sustain: true, bus: 'sfx', hall: 0.08, key: 'pullback' });
+      I.rewind(t, L, 0.2);
+    }
+    // 31.333 the opening's ambient pulse returns, very low, and stops at the cut to black.
+    {
+      const t = b(47);
+      const L = b(48) - t;
+      I.heart(t, 0.5);
+      I.bed(t, L, CH.open, [[0, 0], [0.25, 0.13], [L - 0.06, 0.13, 'lin'], [L, 0, 'lin']], { cut: [[0, 420]], hall: 0.1 });
+      I.bed(t, L, ['D2'], [[0, 0], [0.25, 0.18], [L - 0.06, 0.18, 'lin'], [L, 0, 'lin']], { bus: 'amb', cut: [[0, 230]], detune: 5 });
+    }
+    // 32.0 silence (only the faintest screen-off tick marks the cut to black).
+    tock(b(48), 0.035, 2300, { bus: 'sfx', dec: 0.012 });
+    // 33.333 one clean notification ding, the same as 5.333: dry, centred, short tail.
+    I.ding(b(50), 0.85, { dry: true });
   }
 
   FILM.audio = {
