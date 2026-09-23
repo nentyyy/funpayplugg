@@ -235,7 +235,7 @@
     // the magnified figure under 15's detailed bust: its rim thins as it is blown up (the kit's rim is a fixed
     // fraction of his height). Above the neck it stays hidden while the bust holds (its cap and hair would
     // peek around the profile head) and comes in as the bust lets go; below, his coat and arms carry on.
-    const rim = Math.pow(Math.max(1, H.m), -0.75);
+    const rim = H.m > 1.001 ? Math.pow(H.m, -0.75) : null;
     const neckY = H.y + lerp(BUST_NECK[0], BUST_NECK[1], clamp(v / 0.2)) * H.s;
     ctx.save();
     ctx.beginPath();
@@ -336,10 +336,16 @@
       }
       if (t < B0) {
         // A2 — the 3D pull through the frozen city (full frame); the last of 15's grade lets go by T 30.0
-        K.city(ctx, camAt(t), T, { px: S, extra: (c, C) => drawHim(c, C) });
         const ga = gradeAt(t);
-        grade15(ctx, ga);
-        vignette15(ctx, ga);
+        if (ga > 0.001) {
+          // while 15's grade is still on, he stays in front of it (as in the opening): no pop at T_X
+          const C = K.city(ctx, camAt(t), T, { px: S });
+          grade15(ctx, ga);
+          drawHim(ctx, C);
+          vignette15(ctx, ga);
+        } else {
+          K.city(ctx, camAt(t), T, { px: S, extra: (c, C) => drawHim(c, C) });
+        }
         return;
       }
       if (t < B1) {
