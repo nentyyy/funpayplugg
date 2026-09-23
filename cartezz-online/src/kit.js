@@ -908,7 +908,11 @@
       text(ctx, s, 520 - w / 2, 840, { size: 100, weight: 600 });
     }
     const gb = S('badgeGold');
-    if (gb > 0) goldBadge(ctx, 745, 805, 56 * (gb < 1 ? E.outBack(gb) : 1), gb, T);
+    if (gb > 0) {
+      // the badge follows the rendered name (fonts differ between machines)
+      const bx = Math.max(745, 520 + textWidth(ctx, 'cartezz', 100, 600) / 2 + 36);
+      goldBadge(ctx, bx, 805, 56 * (gb < 1 ? E.outBack(gb) : 1), gb, T);
+    }
     const pr = S('presence');
     if (pr > 0) presence(ctx, { alpha: pr, blink: o.blink, digit: o.digit });
     // action tiles
@@ -1717,10 +1721,10 @@
       ctx.globalCompositeOperation = 'lighter';
       text(ctx, 'ONLINE', 0, 150, { size: 420, weight: 800, align: 'center', color: P.violetHot, alpha: 0.35 * inten, tracking: 20 });
       ctx.globalCompositeOperation = 'source-over';
-      text(ctx, 'ONLINE', 0, 150, { size: 420, weight: 800, align: 'center', color: pressed ? P.hot : P.bone, tracking: 20, alpha: clamp(inten * 1.4 - 0.2) });
+      text(ctx, 'ONLINE', 0, 150, { size: 420, weight: 800, align: 'center', color: pressed ? P.hot : P.bone, tracking: 20, alpha: clamp((inten - 0.35) * 2.2) });
       ctx.restore();
       // dot
-      ctx.globalAlpha *= clamp(inten * 1.4 - 0.2);
+      ctx.globalAlpha *= clamp((inten - 0.35) * 2.2);
       ctx.fillStyle = P.bone;
       ctx.beginPath();
       ctx.arc(-900, 0, 80, 0, TAU);
