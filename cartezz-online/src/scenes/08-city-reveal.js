@@ -44,8 +44,8 @@
     // a low bank of fog lying on the far street: softens the tower feet, deepens the vanishing point
     const g = ctx.createLinearGradient(0, hy - 150, 0, hy + 40);
     g.addColorStop(0, css(P.haze, 0));
-    g.addColorStop(0.55, css(P.haze, 0.55 * a));
-    g.addColorStop(0.85, css(mix(P.haze, P.hazeViolet, 0.5), 0.6 * a));
+    g.addColorStop(0.6, css(P.haze, 0.3 * a));
+    g.addColorStop(0.9, css(mix(P.haze, P.hazeViolet, 0.5), 0.32 * a));
     g.addColorStop(1, css(P.haze, 0));
     ctx.fillStyle = g;
     ctx.fillRect(0, hy - 150, 1080, 190);
@@ -109,7 +109,7 @@
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = 0.3 * a;
+    ctx.globalAlpha = 1.0 * a;
     ctx.imageSmoothingEnabled = true;
     ctx.drawImage(R.c, 0, Math.round(hy * S), cv.width, cv.height - Math.round(hy * S), 0, Math.round(hy * S) , cv.width, cv.height - Math.round(hy * S));
     ctx.restore();

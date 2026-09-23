@@ -71,21 +71,31 @@
   function gradeBackground(ctx) {
     ctx.save();
     ctx.globalCompositeOperation = 'multiply';
-    let g = ctx.createRadialGradient(560, 520, 60, 560, 620, 1150);
+    let g = ctx.createRadialGradient(560, 430, 180, 560, 560, 1150);
     g.addColorStop(0, P.bone);
-    g.addColorStop(0.35, K.css(K.mix(P.bone, P.violetInk, 0.45)));
-    g.addColorStop(0.7, K.css(K.mix(P.bone, P.violetInk, 0.85)));
+    g.addColorStop(0.4, K.css(K.mix(P.bone, P.violetInk, 0.3)));
+    g.addColorStop(0.75, K.css(K.mix(P.bone, P.violetInk, 0.8)));
     g.addColorStop(1, P.void);
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, 1080, 1920);
     // the letters band stays lit across the top; the lower frame (behind his coat) sinks to black
     g = ctx.createLinearGradient(0, 0, 0, 1920);
     g.addColorStop(0, P.bone);
-    g.addColorStop(0.36, P.bone);
-    g.addColorStop(0.62, K.css(K.mix(P.bone, P.violetInk, 0.7)));
+    g.addColorStop(0.42, P.bone);
+    g.addColorStop(0.64, K.css(K.mix(P.bone, P.violetInk, 0.65)));
     g.addColorStop(1, P.void);
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, 1080, 1920);
+    ctx.restore();
+    // the letters bloom a little through the soft focus
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    g = ctx.createLinearGradient(0, 0, 0, 640);
+    g.addColorStop(0, K.css(P.violetHot, 0.0));
+    g.addColorStop(0.5, K.css(P.violetHot, 0.07));
+    g.addColorStop(1, K.css(P.violetHot, 0));
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 1080, 640);
     ctx.restore();
   }
 
