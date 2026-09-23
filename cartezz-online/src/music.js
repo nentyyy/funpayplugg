@@ -1637,10 +1637,10 @@
 
     // ================================================================ ACT 2 — the notification (5.333 – 10.667)
     // THE ding, then three more.
-    I.ding(b(8), 0.85);
-    I.ding(b(10), 0.75, { pan: -0.35 });
-    I.ding(b(11), 0.65, { pan: 0.4 });
-    I.ding(b(11.5), 0.5, { pan: -0.45 });
+    I.ding(b(8), 0.6);
+    I.ding(b(10), 0.54, { pan: -0.35 });
+    I.ding(b(11), 0.47, { pan: 0.4 });
+    I.ding(b(11.5), 0.36, { pan: -0.45 });
     // The ding's colour over the bed (D lydian), glassy and hushed.
     I.bed(b(8), b(16) - b(8), CH.notif, [[0, 0], [2.4, 0.06], [b(12) - b(8), 0.08], [b(16) - b(8) - 0.02, 0.12], [b(16) - b(8), 0]], { sine: true, cut: [[0, 3000]], hall: 0.25 });
     // Quiet hats on 8ths from 6.667, 16ths through the flood.
@@ -1648,12 +1648,12 @@
     for (let k = 0; k < 12; k++) hat(b(12) + k * S16, k % 2 ? 0.06 : 0.09);
     // 8.0 the flood: a full ding on the downbeat, then single dings on 16ths, then on 32nds, seeded
     // pitches across E pentatonic and seeded pans.
-    I.ding(b(12), 0.7, { pan: 0.1, dec: 1.0 });
+    I.ding(b(12), 0.5, { pan: 0.1, dec: 1.0 });
     for (let k = 1; k < 11; k++) {
       const q = r('flood', k);
       const t = k < 4 ? b(12) + k * S16 : b(13) + (k - 4) * (S16 / 2);
       const nm = PENTA[Math.floor(q() * PENTA.length)];
-      I.dingTone(t, hz(nm), 0.34 + 0.2 * q() + k * 0.012, { pan: (q() * 2 - 1) * 0.8, dec: 0.6, hall: 0.22, delay: 0.06 });
+      I.dingTone(t, hz(nm), 0.25 + 0.14 * q() + k * 0.01, { pan: (q() * 2 - 1) * 0.8, dec: 0.6, hall: 0.22, delay: 0.06 });
     }
     // Sub pulse on every beat of the flood.
     for (const n of [12, 13]) {
@@ -1681,11 +1681,11 @@
     // ================================================================ ACT 3 — the world breaks (10.667 – 13.333)
     {
       const t = b(16);
-      kick(t, 0.85, 'full');
+      kick(t, 0.8, 'full');
       E.duck(t, 0.7);
       subDrop(t, hz('D2'), 30, 1.8, 0.7);
       whump(t, 0.7);
-      I.cymbal(t, 0.4, { dec: 2.6, key: 'breakcym' });
+      I.cymbal(t, 0.24, { dec: 2.6, lp: 9000, key: 'breakcym' });
       nz(t, 1.8, { type: 'lowpass', q: 0.8, f: [[0, 9000], [1.6, 300, 'exp']], amp: perc(0.4, 0.002, 1.5), stereo: true, bus: 'sfx', hall: 0.3, key: 'breakcrash' });
       // Glass burst: bright pings and shards spraying out.
       ['D7', 'A6', 'E7', 'F#7', 'A7', 'D6'].forEach((nm, i) => glass(t + i * 0.011, hz(nm), 0.16 - i * 0.015, { dec: 1.1, pan: (i % 2 ? 1 : -1) * (0.3 + i * 0.1), hall: 0.35 }));
@@ -1714,15 +1714,15 @@
 
     // ================================================================ ACT 4 — the walk (13.333 – 18.667)
     // Bass ostinato on 8ths, dark pad, kick 1 and 3, metal 2 and 4, hats, the ding motif on offbeats.
-    bassBar(b(20), BASS.dm, 0.55);
-    bassBar(b(24), BASS.bb, 0.55);
-    bassBar(b(26), BASS.c, 0.55);
+    bassBar(b(20), BASS.dm, 0.42);
+    bassBar(b(24), BASS.bb, 0.42);
+    bassBar(b(26), BASS.c, 0.42);
     padSeg(b(20), b(24), CH.dm, 0.22, 850);
     padSeg(b(24), b(26), CH.bb, 0.22, 850);
     padSeg(b(26), b(28), CH.c, 0.22, 950);
     for (let n = 20; n < 28; n++) {
       if (n % 2 === 0) {
-        kick(b(n), 0.82, 'full');
+        kick(b(n), 0.75, 'full');
         E.duck(b(n), 0.55);
       } else I.metal(b(n), n < 24 ? 0.09 : 0.15, n % 4 === 1 ? -0.2 : 0.2);
       hat(b(n) + S8, 0.07);
@@ -1783,18 +1783,18 @@
     // motif as the lead, whooshes on 8ths for the arrivals.
     {
       const t = b(32);
-      I.cymbal(t, 0.42, { dec: 2.4, key: 'returncym' });
+      I.cymbal(t, 0.22, { dec: 2.4, lp: 9000, key: 'returncym' });
       nz(t, 0.9, { type: 'lowpass', q: 0.7, f: [[0, 7000], [0.8, 500, 'exp']], amp: perc(0.22, 0.002, 0.8), stereo: true, bus: 'sfx', hall: 0.2, key: 'return' });
-      for (const [n, v] of [[32, 0.88], [33.5, 0.45], [34, 0.82], [35.5, 0.45]]) {
+      for (const [n, v] of [[32, 0.78], [33.5, 0.4], [34, 0.72], [35.5, 0.4]]) {
         kick(b(n), v, 'full');
         E.duck(b(n), v > 0.6 ? 0.6 : 0.3);
       }
       I.metal(b(33), 0.17, -0.2);
       I.metal(b(35), 0.17, 0.2);
-      for (let k = 0; k < 16; k++) hat(b(32) + k * S16, k % 4 === 2 ? 0.11 : k % 2 ? 0.06 : 0.08, k === 14);
-      bassBar(b(32), BASS.dm.slice(0, 4).concat(['D2', 'C3', 'A2', 'F2']), 0.6);
-      bassBar(b(34), BASS.bb, 0.6);
-      bassBar(b(35), BASS.c, 0.6);
+      for (let k = 0; k < 16; k++) hat(b(32) + k * S16, k === 0 ? 0.04 : k % 4 === 2 ? 0.1 : k % 2 ? 0.055 : 0.075, k === 14);
+      bassBar(b(32), BASS.dm.slice(0, 4).concat(['D2', 'C3', 'A2', 'F2']), 0.42);
+      bassBar(b(34), BASS.bb, 0.42);
+      bassBar(b(35), BASS.c, 0.42);
       const oct = ['D3', 'D3', 'A3', 'D3', 'D3', 'C4', 'A3', 'F3', 'Bb2', 'Bb2', 'F3', 'Bb2', 'C3', 'C3', 'G3', 'E3'];
       oct.forEach((nm, k) => I.pluck(b(32) + k * S8, nm, 0.12, { dec: 0.3, bright: 5 }));
       padSeg(b(32), b(34), CH.dm, 0.26, 1300);
@@ -1834,7 +1834,7 @@
     revSwell(b(38), b(40) - b(38), 0.55, { fTop: 6500, hall: 1e-4 });
 
     // ================================================================ ACT 6 — everything stops (26.667 – 29.333)
-    I.press(b(40), 1);
+    I.press(b(40), 0.85);
     // Then near silence: a very faint high room tone fading over about a second.
     nz(b(40), 1.3, { type: 'highpass', q: 0.6, f: [[0, 5200]], type2: 'lowpass', f2: 11000, amp: [[0, 0], [0.04, 0.012], [1.25, FLOOR, 'exp']], stereo: true, bus: 'amb', key: 'roomtone' });
     // 28.833 a barely audible sub breath as his eye lands: a sub swell and a whisper of air.
@@ -1862,7 +1862,7 @@
     // 32.0 silence (only the faintest screen-off tick marks the cut to black).
     tock(b(48), 0.035, 2300, { bus: 'sfx', dec: 0.012 });
     // 33.333 one clean notification ding, the same as 5.333: dry, centred, short tail.
-    I.ding(b(50), 0.85, { dry: true });
+    I.ding(b(50), 0.6, { dry: true });
   }
 
   FILM.audio = {

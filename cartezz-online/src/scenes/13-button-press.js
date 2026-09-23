@@ -138,6 +138,29 @@
     ctx.restore();
   }
 
+  /** The pill face's diffuser: a fine grid on the face plane, readable only from arm's length. */
+  function faceGrid(ctx, C) {
+    const z = FACE_Z, y0 = K.BUTTON.y0 + 0.05, y1 = 9.5, x0 = -4.5, x1 = 5, st = 0.16;
+    ctx.save();
+    ctx.strokeStyle = K.css(P.violetInk, 0.11);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let x = x0; x <= x1 + 1e-6; x += st) {
+      const s = K.projSeg(C, [x, y0, z], [x, y1, z]);
+      if (!s) continue;
+      ctx.moveTo(s[0][0], s[0][1]);
+      ctx.lineTo(s[1][0], s[1][1]);
+    }
+    for (let y = y0; y <= y1 + 1e-6; y += st) {
+      const s = K.projSeg(C, [x0, y, z], [x1, y, z]);
+      if (!s) continue;
+      ctx.moveTo(s[0][0], s[0][1]);
+      ctx.lineTo(s[1][0], s[1][1]);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
   FILM.scene({
     id: ID,
     draw(ctx, tIn, info) {
@@ -159,6 +182,8 @@
           const R = kitHands(arm);
           const hx = f[0] + R.r.x * h, hy = f[1] - R.r.y * h;
           const W = unproject(C, hx, hy, FACE_Z);
+          // the face's diffuser grid, only visible this close (faint, on the face plane)
+          faceGrid(c, C);
           // 2. the face brightens under the approaching palm
           const near = sstep(0.35, 1, arm);
           K.glow(c, hx, hy, h * (0.3 + 0.12 * near), P.violetHot, 0.3 * near + 0.5 * contact);

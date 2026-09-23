@@ -47,13 +47,12 @@
 
   /**
    * Wet-floor mirror: everything above the projected base line of the button (screen line y = m·x + c)
-   * is flipped under it, softened (quarter resolution), faded with distance and broken by seeded streaks.
+   * is flipped under it, softened (a sixth of the resolution), faded with distance and broken by seeded streaks.
    */
   function floorMirror(ctx, m, c, depth, alpha) {
     const src = ctx.canvas;
-    const q = 0.25;
+    const q = 1 / 6;
     const w = Math.max(2, Math.round(src.width * q)), h = Math.max(2, Math.round(src.height * q));
-    const S = src.width / 1080; // device px per frame px
     const cv = scratch(w, h);
     const g = cv.getContext('2d');
     g.setTransform(1, 0, 0, 1, 0, 0);
@@ -98,7 +97,6 @@
     ctx.imageSmoothingEnabled = true;
     ctx.drawImage(cv, 0, 0, w, h, 0, 0, 1080, 1920);
     ctx.restore();
-    return S;
   }
 
   /** His long soft shadow thrown toward the camera by the button behind him. */
@@ -192,7 +190,7 @@
           if (bl && br) {
             const m = (br[1] - bl[1]) / (br[0] - bl[0]);
             const cc = bl[1] - m * bl[0];
-            floorMirror(c, m, cc, 620, 0.55);
+            floorMirror(c, m, cc, 640, 0.42);
           }
           // 3. shadow, 4. reflection + figure
           longShadow(c, C, s.x, s.z, 16, 1);

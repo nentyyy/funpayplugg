@@ -34,9 +34,10 @@
   const BG_CAM = { pos: [-0.9, 1.62, 214.6], yaw: 0.1, pitch: 0.05, f: 1100 };
   const HEAD_X = 540, HEAD_Y = 820;
   const S0 = 500, S1 = 540;
-  const T_TURN = 28.333, TURN_N = 6; // 0.5 s on twos = 6 drawings, landing by 28.833
-  const T_GAZE = 28.833, GAZE_N = 3;
-  const T_BLINK = 29.083;
+  const B = K.B;
+  const T_TURN = 42.5 * B, TURN_N = 6; // T 28.333 (8th); 0.5 s on twos = 6 drawings, landing by 28.833
+  const T_GAZE = 43.25 * B, GAZE_N = 3; // T 28.833 (16th)
+  const T_BLINK = 43.625 * B; // T 29.083
   const BLINK = [1, 0.45]; // closed, half open, then open
   const BG_Q = 1 / 3; // background resolution (soft focus)
 
@@ -133,11 +134,18 @@
       });
       // 4. vignette
       ctx.save();
-      const g = ctx.createRadialGradient(540, 820, 520, 540, 900, 1250);
+      let g = ctx.createRadialGradient(540, 820, 520, 540, 900, 1250);
       g.addColorStop(0, K.css(P.void, 0));
       g.addColorStop(1, K.css(P.void, 0.7));
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, 1080, 1920);
+      for (const side of [0, 1]) {
+        g = ctx.createLinearGradient(side ? 1080 : 0, 0, side ? 780 : 300, 0);
+        g.addColorStop(0, K.css(P.void, 0.55));
+        g.addColorStop(1, K.css(P.void, 0));
+        ctx.fillStyle = g;
+        ctx.fillRect(side ? 780 : 0, 0, 300, 1920);
+      }
       ctx.restore();
     },
   });

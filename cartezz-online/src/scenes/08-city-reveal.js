@@ -100,18 +100,19 @@
     // fade with distance below the horizon
     g.globalCompositeOperation = 'destination-in';
     const fg = g.createLinearGradient(0, hy, 0, hy + src * stretch);
-    fg.addColorStop(0, 'rgba(0,0,0,1)');
-    fg.addColorStop(0.35, 'rgba(0,0,0,0.45)');
-    fg.addColorStop(1, 'rgba(0,0,0,0)');
+    fg.addColorStop(0, css(P.void, 1));
+    fg.addColorStop(0.35, css(P.void, 0.45));
+    fg.addColorStop(1, css(P.void, 0));
     g.fillStyle = fg;
     g.fillRect(0, hy, 1080, src * stretch);
     g.globalCompositeOperation = 'source-over';
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = 1.0 * a;
+    ctx.globalAlpha = 0.35 * a;
     ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(R.c, 0, Math.round(hy * S), cv.width, cv.height - Math.round(hy * S), 0, Math.round(hy * S) , cv.width, cv.height - Math.round(hy * S));
+    const ry = (hy / 1920) * h, dy = hy * S;
+    ctx.drawImage(R.c, 0, ry, w, h - ry, 0, dy, cv.width, cv.height - dy);
     ctx.restore();
   }
 

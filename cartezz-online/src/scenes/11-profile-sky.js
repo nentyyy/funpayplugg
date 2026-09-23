@@ -32,8 +32,8 @@
   const lerp = (a, b, t) => a + (b - a) * t;
 
   const Z_HIM = 63.9; // storyboard G3: stopped
-  const CAM0 = { pos: [1.5, 0.6, 51.9], yaw: -0.02, pitch: 0.33, f: 1450 };
-  const CAM1 = { pos: [1.5, 1.2, 52.3], yaw: -0.02, pitch: 0.305, f: 1450 };
+  const CAM0 = { pos: [1.5, 0.6, 51.9], yaw: -0.02, pitch: 0.297, f: 1450 };
+  const CAM1 = { pos: [1.5, 1.2, 52.3], yaw: -0.02, pitch: 0.268, f: 1450 };
 
   function vignette(S) {
     const w = Math.round(1080 * S), h = Math.round(1920 * S);

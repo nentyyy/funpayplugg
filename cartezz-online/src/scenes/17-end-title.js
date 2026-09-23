@@ -3,7 +3,8 @@
  * Global T 32.000 → 34.667 (local t 0 → 2.667), black, mode 'none' (no grain), hard cut in from the profile.
  *
  * Layers, back to front:
- *   1 void (pure black)
+ *   1 void (pure black) — plus, on the cut frame, the afterimage of the avatar ring the eye was just holding
+ *     (G1 circle (540, 540) r 160, violetMid ≤ 12 %), dying over 8 frames: the screen switched off, not a blank.
  *   2 the title, one line centred on x 540, baseline 968: `CARTEZZ` bone · ` // ` ash · `@MURTHERED` violetMid,
  *     50 px, weight 500, tracking 0.28 em (14 px). Fades in over 8 frames from T 32.667 with a 6 px rise (outExpo).
  *   3 a tiny online dot (kit.onlineDot, r 9) 30 px left of the title's left edge at y 953, popping (outBack,
@@ -22,6 +23,7 @@
   const clamp = (v, lo = 0, hi = 1) => (v < lo ? lo : v > hi ? hi : v);
 
   // timing (local seconds)
+  const GHOST = 8 * FR; //  T 32.000 → 32.333  the ring's afterimage fades out
   const T_TITLE = 1 * B; // T 32.667  title fades in (8 frames)
   const T_DOT = 2 * B; //   T 33.333  online dot pops with the ding (3 frames)
 
@@ -69,6 +71,20 @@
       // 1 — black
       ctx.fillStyle = P.void;
       ctx.fillRect(0, 0, 1080, 1920);
+      const g = 1 - E.outCubic(clamp(t / GHOST));
+      if (g > 0.002) {
+        const AV = K.G1.avatar;
+        ctx.save();
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = K.css(P.violetMid, 0.12 * g);
+        ctx.beginPath();
+        ctx.arc(AV.x, AV.y, AV.r, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.lineWidth = 9;
+        ctx.strokeStyle = K.css(P.violet, 0.035 * g);
+        ctx.stroke();
+        ctx.restore();
+      }
 
       // 2 — the title
       const u = hit(t, T_TITLE, 8);
