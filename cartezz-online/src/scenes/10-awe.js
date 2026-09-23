@@ -121,7 +121,7 @@
     }
     // front: three out-of-focus dots; the second is the one that passes his face on beat 4
     DOTS_FRONT.push({ x: 930, y0: 1500, v: 150, r: 26, ph: 0.4, sway: 14, t0: -1 });
-    DOTS_FRONT.push({ x: 752, y0: 1290, v: 190, r: 15, ph: 1.3, sway: 10, t0: B4 - 0.9 });
+    DOTS_FRONT.push({ x: 800, y0: 1230, v: 380, r: 15, ph: 1.3, sway: 10, t0: B4 - 0.6 });
     DOTS_FRONT.push({ x: 120, y0: 1760, v: 120, r: 34, ph: 2.1, sway: 18, t0: -1 });
   })();
 

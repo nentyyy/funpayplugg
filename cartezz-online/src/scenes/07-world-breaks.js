@@ -234,6 +234,30 @@
     }
   }
 
+  // An image on a world parallelogram (TL, TR, BL), nu × nv affine cells: holds up under strong perspective.
+  function rectCells(g, C, img, TL, TR, BL, nu, nv) {
+    const W = img.width, H = img.height;
+    const at = (u, v) => [TL[0] + (TR[0] - TL[0]) * u + (BL[0] - TL[0]) * v, TL[1] + (TR[1] - TL[1]) * u + (BL[1] - TL[1]) * v, TL[2] + (TR[2] - TL[2]) * u + (BL[2] - TL[2]) * v];
+    const sw = W / nu, sh = H / nv;
+    for (let j = 0; j < nv; j++) {
+      for (let i = 0; i < nu; i++) {
+        const A = at(i / nu, j / nv), Bp = at((i + 1) / nu, j / nv), Cp = at(i / nu, (j + 1) / nv);
+        const pa = C.project(A[0], A[1], A[2]), pb = C.project(Bp[0], Bp[1], Bp[2]), pc = C.project(Cp[0], Cp[1], Cp[2]);
+        if (!pa || !pb || !pc) continue;
+        const ax = (pb[0] - pa[0]) / sw, ay = (pb[1] - pa[1]) / sw;
+        const cx = (pc[0] - pa[0]) / sh, cy = (pc[1] - pa[1]) / sh;
+        const x0 = i * sw, y0 = j * sh;
+        g.save();
+        g.transform(ax, ay, cx, cy, pa[0] - ax * x0 - cx * y0, pa[1] - ay * x0 - cy * y0);
+        const ex = 0.8;
+        const sx = Math.max(0, x0 - ex), sy = Math.max(0, y0 - ex);
+        const ww = Math.min(W - sx, sw + 2 * ex), hh = Math.min(H - sy, sh + 2 * ex);
+        g.drawImage(img, sx, sy, ww, hh, sx, sy, ww, hh);
+        g.restore();
+      }
+    }
+  }
+
   function poly(g, sp) {
     g.moveTo(sp[0][0], sp[0][1]);
     for (let i = 1; i < sp.length; i++) g.lineTo(sp[i][0], sp[i][1]);
@@ -352,7 +376,7 @@
         ctx.beginPath();
         poly(ctx, top);
         ctx.clip();
-        K.planeImage(ctx, C, img, corners[0], corners[1], corners[2], { strips: 12 });
+        rectCells(ctx, C, img, corners[0], corners[1], corners[2], Math.max(2, Math.round(b.w / 60)), 3);
         ctx.restore();
         }
         ctx.save();
@@ -468,6 +492,21 @@
     ctx.globalAlpha = 0.3 * a;
     ctx.imageSmoothingEnabled = true;
     ctx.drawImage(R.c, 0, Math.round(hy * S), cv.width, cv.height - Math.round(hy * S), 0, Math.round(hy * S) , cv.width, cv.height - Math.round(hy * S));
+    ctx.restore();
+  }
+
+  // Cartezz's reflection on the wet road: the kit figure mirrored about his feet, faint.
+  function figureReflection(ctx, C, x, z, pose, a) {
+    if (a <= 0.004) return;
+    const f = C.project(x, 0, z), hd = C.project(x, 1.85, z);
+    if (!f || !hd) return;
+    const h = Math.hypot(hd[0] - f[0], hd[1] - f[1]);
+    if (h < 3) return;
+    ctx.save();
+    ctx.globalAlpha *= 0.2 * a;
+    ctx.translate(f[0], f[1]);
+    ctx.scale(1, -0.9);
+    K.cartezz(ctx, 0, 0, h, Object.assign({ view: 'back', rim: 0.75 }, pose));
     ctx.restore();
   }
 
@@ -653,16 +692,17 @@
       // 6. Cartezz appears where the avatar was
       {
         const m = clamp((T - T_MAN) / (6 * FR) + 1 / 6);
+        const endA = E.inOutSine(clamp((T - (T_END - 2 * B)) / (2 * B)));
+        hazeBand(ctx, C, T, endA);
+        reflection(ctx, C, endA);
         if (m > 0) {
-          const hazeA = E.inOutSine(clamp((T - (T_END - 1.4 * B)) / (1.4 * B)));
-          reflection(ctx, C, hazeA);
+          figureReflection(ctx, C, 0, 34, { walk: null }, endA * clamp(m * 1.6));
           ctx.save();
           ctx.globalAlpha *= clamp(m * 1.6);
           const r = K.figure(ctx, C, 0, 34, { walk: null });
           ctx.restore();
           if (r && m < 1) glitch(ctx, r.x, r.y - r.h, r.h * 0.9, r.h, 1 - m, 34, T);
           if (m < 1 && r) K.glow(ctx, r.x, r.y - r.h * 0.5, r.h * 1.4, P.violetMid, 0.5 * (1 - m));
-          hazeBand(ctx, C, T, hazeA);
         }
       }
 

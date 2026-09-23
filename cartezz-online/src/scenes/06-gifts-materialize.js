@@ -330,6 +330,8 @@
 
       // ---- 2. the flood sweeps up and out ----------------------------------------------------
       const poolK = 1 - E.inOutSine(hit(0, 8, null));
+      // 05's light over the header, draining with the flood
+      K.glow(ctx, 540, 330, 480, P.violetMid, 0.7 * poolK);
       if (t < 16 * FR) {
         ctx.save();
         ctx.beginPath();
@@ -427,7 +429,7 @@
       const build = clamp((t - B) / (info.dur - B));
       // the avatar ring flares
       ctx.save();
-      ctx.strokeStyle = K.css(P.violetMid, 0.25 + 0.6 * suck);
+      ctx.strokeStyle = K.css(P.violetMid, 0.3 * build + 0.6 * suck);
       ctx.lineWidth = 2 + 5 * suck;
       ctx.beginPath();
       ctx.arc(CX, CY, 160 + 6 * build, 0, TAU);
@@ -439,7 +441,7 @@
       ctx.restore();
 
       // the screen lifts slightly (neutral, not a purple wash)
-      const lift = 0.02 * build + 0.07 * suck;
+      const lift = 0.012 * build + 0.04 * suck;
       if (lift > 0.002) {
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
