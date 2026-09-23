@@ -37,9 +37,12 @@
 
   function vignette(S) {
     const w = Math.round(1080 * S), h = Math.round(1920 * S);
-    return LIB.cached(`profile-sky-vignette-${w}x${h}`, () => {
+    // same backing as the main canvas (a CPU canvas when the host reads pixels back), so the draw is a plain blit
+    const a = FILM.ctx && FILM.ctx.getContextAttributes ? FILM.ctx.getContextAttributes() : null;
+    const attrs = { willReadFrequently: !!(a && a.willReadFrequently) };
+    return LIB.cached(`profile-sky-vignette-${w}x${h}-${attrs.willReadFrequently ? 'cpu' : 'gpu'}`, () => {
       const c = FILM.makeCanvas(w, h);
-      const v = c.getContext('2d');
+      const v = c.getContext('2d', attrs);
       v.scale(S, S);
       const g = v.createRadialGradient(540, 820, 420, 540, 960, 1200);
       g.addColorStop(0, K.css(P.void, 0));

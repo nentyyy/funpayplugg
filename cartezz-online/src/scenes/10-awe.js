@@ -311,9 +311,7 @@
         sg.addColorStop(0, K.css(P.void, 0));
         sg.addColorStop(1, K.css(P.void, 0.5));
         ctx.fillStyle = sg;
-        ctx.beginPath();
-        ctx.rect(hx - s * 1.2, hy - s * 0.75, s * 1.35, s * 2.4);
-        ctx.fill();
+        ctx.fillRect(0, hy - s * 0.8, 1080, 1920); // the gradient is zero on the face side of its start line
         const ca = Math.cos(pitch), sa = Math.sin(pitch);
         const jx = hx + s * 0.33, jy = hy + s * 0.285;
         const ng = ctx.createLinearGradient(jx, jy, jx + sa * s * 0.2, jy + ca * s * 0.2);
@@ -324,9 +322,9 @@
         // bounded by the neck's front edge (x ≈ hx + 0.24 s) so the light in front of his throat stays clean
         ctx.beginPath();
         ctx.moveTo(jx - s * 0.9 * ca, jy + s * 0.9 * sa - 2);
-        ctx.lineTo(hx + s * 0.25, jy - s * 0.08 * sa - 2);
-        ctx.lineTo(hx + s * 0.25, hy + s * 0.72);
-        ctx.lineTo(jx - s * 0.9 * ca, hy + s * 0.72);
+        ctx.lineTo(hx + s * 0.235, jy - s * 0.08 * sa - 2);
+        ctx.lineTo(hx + s * 0.235, hy + s * 1.1);
+        ctx.lineTo(jx - s * 0.9 * ca, hy + s * 1.1);
         ctx.closePath();
         ctx.fill();
         ctx.restore();
