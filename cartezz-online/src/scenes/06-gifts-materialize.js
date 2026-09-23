@@ -309,9 +309,9 @@
         hc.globalAlpha = 1;
         hc.clearRect(0, 0, hw, hh);
         const k = hw / 1080;
-        const copies = 7;
+        const copies = 5;
         for (let i = 1; i <= copies; i++) {
-          const sc = 1 - suck * 0.045 * i;
+          const sc = 1 - suck * 0.06 * i;
           hc.globalAlpha = 0.5 * (1 - (i - 1) / copies);
           hc.setTransform(k * sc, 0, 0, k * sc, k * CX * (1 - sc), k * CY * (1 - sc));
           hc.drawImage(quarter, 0, 0, 1080, 1920);
