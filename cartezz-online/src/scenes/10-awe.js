@@ -11,8 +11,8 @@
  *   2. void dim over the street (≈ 50%) + a depth fade toward the lower left
  *   3. the hologram's light: cold violet-white spill from the top-right corner, soft beams, flickering twice
  *   4. online dots drifting up behind him (sharp, small)
- *   5. Cartezz: kit.head, painted on an offscreen layer and re-lit from it: the shadow side sinks (source-atop),
- *      then an additive pass masked to his shape — the hologram's key and a cold edge light on every contour
+ *   5. Cartezz: kit.head straight into the frame, and again at half resolution as a mask for the re-light: the
+ *      shadow side sinks (a masked shade layer), then an additive pass masked to his shape — the hologram's key and a cold edge light on every contour
  *      that faces it (nose, lips, brow, brim, shoulder)
  *   6. online dots drifting up in front of him (large, out of focus) — one passes his face on beat 4
  *   7. vignette, lower frame falloff
@@ -296,17 +296,16 @@
       const pitch = lerp(0.3, 0.36, push) + 0.012 * surprise - 0.004 * onTwos(t, B4, [0.5, 1], 0);
       const hx = HEAD_X - (s - 540) * 0.18; // the push grows the head about the face, not the crown
       const hy = HEAD_Y + (s - 540) * 0.1;
-      const lay = layer('head', S);
-      const g = fresh(lay, S);
-      K.head(g, hx, hy, s, {
+      const headOpts = {
         dir: 1, turn: 1, body: 'side', pitch, expr: expression(t), gaze: 0,
         light: { front: 1, amt: clamp(0.55 + 0.45 * hl) },
         glint: true, wash: 0.6 + 0.4 * hl, rim: 0.35 + 0.25 * hl,
-      });
+      };
+      K.head(ctx, hx, hy, s, headOpts); // drawn straight into the frame, full resolution
 
       // light and shade masked to his shape: soft passes at reduced resolution (the rim at 1/2, shade and key at 1/4)
       const mk = layer('mask2', S, 0.5);
-      fresh(mk, 1).drawImage(lay, 0, 0, mk.width, mk.height);
+      K.head(fresh(mk, S * 0.5), hx, hy, s, headOpts); // his silhouette at half resolution: the mask
       const mq = layer('mask4', S, 0.25);
       fresh(mq, 1).drawImage(mk, 0, 0, mq.width, mq.height);
       const k4 = S * 0.25, k2 = S * 0.5;
@@ -382,7 +381,6 @@
 
       ctx.save();
       ctx.imageSmoothingEnabled = true;
-      ctx.drawImage(lay, 0, 0, lay.width, lay.height, 0, 0, 1080, 1920);
       ctx.drawImage(shc, 0, 0, shc.width, shc.height, 0, 0, 1080, 1920);
       ctx.globalCompositeOperation = 'lighter';
       ctx.drawImage(fxc, 0, 0, fxc.width, fxc.height, 0, 0, 1080, 1920);
