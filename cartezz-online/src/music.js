@@ -40,7 +40,7 @@
     ride: [
       [0, -8], [5.25, -8], [5.333, -5], [7.9, -5], [8.0, -3.5], [10.55, -3], [10.667, -1],
       [13.2, -0.5], [13.333, -1], [18.55, -1], [18.667, -2], [21.25, -2.5], [21.333, -1.5],
-      [26.6, -1.5], [26.667, 0], [26.75, 0], [27.3, -8], [29.25, -8], [29.333, -4], [31.9, -4], [32.0, -14], [33.2, -14], [33.3, -5], [34.7, -5],
+      [23.95, -1.5], [24.0, -4], [25.333, -4], [26.6, -1], [26.667, 0], [26.75, 0], [27.3, -8], [29.25, -8], [29.333, -4], [31.9, -4], [32.0, -14], [33.2, -14], [33.3, -5], [34.7, -5],
     ],
   };
 
@@ -1693,7 +1693,7 @@
         const q = r('shards');
         const gr = [];
         for (let j = 0; j < 40; j++) gr.push({ t: j === 0 ? 0 : Math.pow(q(), 1.8) * 0.5, dur: 0.02, amp: 0.3 * (0.3 + 0.7 * q()), pan: (q() * 2 - 1) * 0.9, f: 4000 + q() * 7000, q: 4, att: 0.0003, dec: 0.004 });
-        I.grains(t, 0.6, 'shards', gr, 0.8, { bus: 'sfx', hall: 0.2 });
+        I.grains(t, 0.6, 'shards', gr, 0.6, { bus: 'sfx', hall: 0.2 });
       }
     }
     // The low world grows: dark pad opening up, a D1 sub floor, kick on 1 and 3.
@@ -1821,8 +1821,8 @@
     }
     // 24.0 sudden thinning: a sub pulse on each beat (a clock tick with it) and a held high A5.
     for (let n = 36; n < 40; n++) {
-      kick(b(n), n === 36 ? 0.7 : 0.5, 'heart');
-      sub(b(n), b(n) + 0.4, 'A1', 0.42, { att: 0.004, rel: 0.2 });
+      kick(b(n), n === 36 ? 0.6 : 0.45, 'heart');
+      sub(b(n), b(n) + 0.4, 'A1', 0.32, { att: 0.004, rel: 0.2 });
       tock(b(n), 0.1, 3400, { bus: 'sfx', dec: 0.02, pan: 0.12 });
     }
     // The tension tone: A5, climbing a semitone from 25.333, stopping dead on the press.
@@ -1838,8 +1838,8 @@
     // Then near silence: a very faint high room tone fading over about a second.
     nz(b(40), 1.3, { type: 'highpass', q: 0.6, f: [[0, 5200]], type2: 'lowpass', f2: 11000, amp: [[0, 0], [0.04, 0.012], [1.25, FLOOR, 'exp']], stereo: true, bus: 'amb', key: 'roomtone' });
     // 28.833 a barely audible sub breath as his eye lands: a sub swell and a whisper of air.
-    I.tone(b(43.25), 1.5, [[0, 40], [1.5, 35, 'exp']], [[0, 0], [0.22, 0.2], [1.5, FLOOR, 'exp']], { bus: 'bass', h: [[1, 1], [2, 0.35]] });
-    nz(b(43.25), 1.0, { type: 'bandpass', q: 0.8, f: [[0, 700], [1.0, 380, 'exp']], amp: [[0, 0], [0.025, 0.02], [0.2, 0.012, 'exp'], [1.0, FLOOR, 'exp']], stereo: true, bus: 'amb', key: 'breath' });
+    I.tone(b(43.25), 1.5, [[0, 40], [1.5, 35, 'exp']], [[0, 0], [0.22, 0.1], [1.5, FLOOR, 'exp']], { bus: 'bass', h: [[1, 1], [2, 0.35]] });
+    nz(b(43.25), 1.0, { type: 'bandpass', q: 0.8, f: [[0, 700], [1.0, 380, 'exp']], amp: [[0, 0], [0.025, 0.012], [0.2, 0.007, 'exp'], [1.0, FLOOR, 'exp']], stereo: true, bus: 'amb', key: 'breath' });
 
     // ================================================================ ACT 7 — the reveal (29.333 – 34.667)
     // 29.333 pull-back: a tape engages, reverse air rushes up, the rewind dives; both land at 31.333.

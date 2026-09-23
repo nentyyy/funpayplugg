@@ -74,7 +74,7 @@ All positions in frame pixels. Drawn identically in 01, 04, 05, 06 (start), 07 (
 | Back button | circle (140, 372) r 50, tile; chevron bone |
 | Edit | pill x 790–936, y 324–420, tile; `Edit` 40 px bone centred x 863, baseline 386 |
 | Avatar | circle centre (540, 540), r 160; ring 2.5 px violet 90% + 1 px violetMid 35% at r 165 |
-| Gift bubbles | r 58: g1 white cap (300, 395) slate · g2 bow tie (290, 640) pink · g3 purple cap (148, 770) pink · g4 tamagotchi (780, 395) slate · g5 bow tie (888, 575) pink · g6 tamagotchi (790, 650) slate |
+| Gift bubbles | r 58: g1 white cap (315, 455) slate · g2 bow tie (290, 640) pink · g3 purple cap (148, 770) pink · g4 tamagotchi (765, 455) slate · g5 bow tie (888, 575) pink · g6 tamagotchi (790, 650) slate |
 | Name | `cartezz` 100 px w600 bone, centred x 520, baseline 840; gold badge centre (745, 805), 56 px |
 | Presence | white square x 428–474, y 872–918, r 10, `2` 34 px w700 void; `online` 56 px mist at x 490, baseline 912 |
 | Action tiles | y 975–1135, w 196, x 124 / 336 / 548 / 760, r 34, voidLift; icon centre y 1038; labels `call` `unmute` `search` `more` 30 px bone baseline 1106 |
