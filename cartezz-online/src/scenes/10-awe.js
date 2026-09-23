@@ -95,9 +95,21 @@
   // ---------------------------------------------------------------------------
   // scratch layer for the head (full frame at render scale; cleared each frame, so draw-order independent)
   // ---------------------------------------------------------------------------
+  // Scratch canvases take the main canvas's backing (a CPU canvas when the host reads pixels back): mixing a
+  // GPU scratch canvas into a CPU main canvas costs a readback per drawImage (measured ≈ 25 ms each).
+  function ctxAttrs() {
+    const a = FILM.ctx && FILM.ctx.getContextAttributes ? FILM.ctx.getContextAttributes() : null;
+    return { willReadFrequently: !!(a && a.willReadFrequently) };
+  }
+  function makeLayer(w, h, attrs) {
+    const c = FILM.makeCanvas(w, h);
+    c.getContext('2d', attrs);
+    return c;
+  }
   function layer(name, S, q = 1) {
     const w = Math.round(1080 * S * q), h = Math.round(1920 * S * q);
-    return LIB.cached(`awe-${name}-${w}x${h}`, () => FILM.makeCanvas(w, h));
+    const attrs = ctxAttrs();
+    return LIB.cached(`awe-${name}-${w}x${h}-${attrs.willReadFrequently ? 'cpu' : 'gpu'}`, () => makeLayer(w, h, attrs));
   }
   /** Get a scratch canvas's context, cleared, with the frame transform at scale k. */
   function fresh(c, k) {
@@ -211,8 +223,9 @@
   /** Static vignette + lower falloff, cached per render scale (t-independent). */
   function vignette(S) {
     const w = Math.round(1080 * S), h = Math.round(1920 * S);
-    return LIB.cached(`awe-vignette-${w}x${h}`, () => {
-      const c = FILM.makeCanvas(w, h);
+    const attrs = ctxAttrs();
+    return LIB.cached(`awe-vignette-${w}x${h}-${attrs.willReadFrequently ? 'cpu' : 'gpu'}`, () => {
+      const c = makeLayer(w, h, attrs);
       const v = c.getContext('2d');
       v.scale(S, S);
       const vg = v.createRadialGradient(640, 760, 420, 540, 960, 1250);

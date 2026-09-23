@@ -1839,7 +1839,7 @@
     nz(b(40), 1.3, { type: 'highpass', q: 0.6, f: [[0, 5200]], type2: 'lowpass', f2: 11000, amp: [[0, 0], [0.04, 0.012], [1.25, FLOOR, 'exp']], stereo: true, bus: 'amb', key: 'roomtone' });
     // 28.833 a barely audible sub breath as his eye lands: a sub swell and a whisper of air.
     I.tone(b(43.25), 1.5, [[0, 40], [1.5, 35, 'exp']], [[0, 0], [0.22, 0.1], [1.5, FLOOR, 'exp']], { bus: 'bass', h: [[1, 1], [2, 0.35]] });
-    nz(b(43.25), 1.0, { type: 'bandpass', q: 0.8, f: [[0, 700], [1.0, 380, 'exp']], amp: [[0, 0], [0.025, 0.012], [0.2, 0.007, 'exp'], [1.0, FLOOR, 'exp']], stereo: true, bus: 'amb', key: 'breath' });
+    nz(b(43.25), 1.0, { type: 'bandpass', q: 0.8, f: [[0, 700], [1.0, 380, 'exp']], amp: [[0, 0], [0.008, 0.012], [0.2, 0.006, 'exp'], [1.0, FLOOR, 'exp']], stereo: true, bus: 'amb', key: 'breath' });
 
     // ================================================================ ACT 7 — the reveal (29.333 – 34.667)
     // 29.333 pull-back: a tape engages, reverse air rushes up, the rewind dives; both land at 31.333.

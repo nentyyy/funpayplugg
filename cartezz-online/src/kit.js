@@ -31,7 +31,10 @@
   // ===========================================================================
 
   const B = 60 / 90;
-  const T_PRESS = Math.round(40 * B * 24) / 24; // 26.6667, bar 11 downbeat
+  const bt = (n) => Math.round(n * B * 24) / 24; // n beats, exact on the frame grid
+  kit.bt = bt;
+  const T_PRESS = bt(40); // 26.6667, bar 11 downbeat
+  const T_BREAK = bt(16); // 10.6667, the world breaks
   kit.B = B;
   kit.T_PRESS = T_PRESS;
   /** World time: everything in the world stops at the press. */
@@ -1509,7 +1512,7 @@
   }
 
   /** The city is asleep (lights off) until the world breaks at 10.667. */
-  const awake = (Tc) => (Tc < 10.667 ? 0.12 : 1);
+  const awake = (Tc) => (Tc < T_BREAK ? 0.12 : 1);
   kit.awake = awake;
   function drawTower(ctx, C, t, Tc, o, riseF) {
     const h = t.h * riseF;
@@ -1669,7 +1672,7 @@
   function drawButton(ctx, C, Tc, o) {
     const pressed = Tc >= T_PRESS - 1e-6;
     const lw = o.lw || 1;
-    const quiet = Tc < 10.667 ? 0.3 : 1;
+    const quiet = Tc < T_BREAK ? 0.3 : 1;
     const inten = pressed ? 1.3 : quiet * (0.74 + 0.26 * kit.beatPulse(Tc, 0.5));
     const bz = BUTTON.bezel;
     // bezel box
@@ -1753,11 +1756,11 @@
 
   /** Hologram flicker 0..1 at city time Tc (on from 18.0, steady from 18.667). */
   kit.holoOn = (Tc) => {
-    if (Tc < 18.0) return 0;
-    if (Tc >= 18.667) return 1;
-    const k = Math.floor((Tc - 18.0) * 24 / 2);
+    if (Tc < bt(27)) return 0;
+    if (Tc >= bt(28)) return 1;
+    const k = Math.floor((Tc - bt(27)) * 24 / 2 + 1e-6);
     const pat = [1, 0, 0, 1, 1, 0, 1, 0, 1, 1, 0.4, 1, 1, 0.6, 1, 1, 1];
-    return pat[Math.min(k, pat.length - 1)] * (0.5 + 0.5 * (Tc - 18) / 0.667);
+    return pat[Math.min(k, pat.length - 1)] * (0.5 + 0.5 * (Tc - bt(27)) / B);
   };
 
   function drawHologram(ctx, C, Tc, o) {
@@ -1850,7 +1853,7 @@
     const D = cityData();
     sky(ctx, C, Tc, o);
     skylineDraw(ctx, C, D);
-    const inten = Tc >= T_PRESS ? 1.3 : Tc < 10.667 ? 0.3 : 0.74 + 0.26 * kit.beatPulse(Tc, 0.5);
+    const inten = Tc >= T_PRESS ? 1.3 : Tc < T_BREAK ? 0.3 : 0.74 + 0.26 * kit.beatPulse(Tc, 0.5);
     ground(ctx, C, Tc, o, inten);
     const items = [];
     const cp = C.pos;
@@ -1864,7 +1867,7 @@
       items.push({ d: Math.hypot(cx - cp[0], cz - cp[2]), f: () => drawTower(ctx, C, t, Tc, o, rf) });
     }
     items.push({ d: Math.hypot(cp[0], BUTTON.z + 1.5 - cp[2]), f: () => drawButton(ctx, C, Tc, o) });
-    if (!o.noHolo && Tc >= 18.0) items.push({ d: Math.hypot(cp[0] - HOLO.x, cp[1] - HOLO.y, cp[2] - HOLO.z), f: () => drawHologram(ctx, C, Tc, o) });
+    if (!o.noHolo && Tc >= bt(27)) items.push({ d: Math.hypot(cp[0] - HOLO.x, cp[1] - HOLO.y, cp[2] - HOLO.z), f: () => drawHologram(ctx, C, Tc, o) });
     if (o.objects !== false) {
       for (const ob of D.objects) {
         if (Tc < ob.arrive) continue;
@@ -1891,8 +1894,8 @@
   kit.city = city;
 
   function searchlights(ctx, C, Tc, D, o) {
-    if (Tc < 12.0) return;
-    const ramp = clamp((Tc - 12.0) / 0.4);
+    if (Tc < bt(18)) return;
+    const ramp = clamp((Tc - bt(18)) / 0.4);
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     for (const b of D.beams) {
@@ -1927,8 +1930,8 @@
   }
 
   function particles(ctx, C, Tc, D, o) {
-    if (Tc < 10.667) return;
-    const age = Tc - 10.667;
+    if (Tc < T_BREAK) return;
+    const age = Tc - T_BREAK;
     const lod = o.px || 1;
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
@@ -1989,13 +1992,13 @@
 
   /** Where the story has Cartezz at global time T (storyboard G3). Returns { x, z, walk, arm, heading } or null. */
   kit.cartezzAt = (T) => {
-    if (T < 10.667) return null;
-    if (T < 15.333) return { x: 0, z: 34, walk: null, arm: 0 };
-    if (T < 16.0) return { x: 0, z: 34 + 1.45 * (T - 15.333), walk: (T - 15.333) / (2 * B), arm: 0 };
-    if (T < 18.667) return { x: 0, z: 60 + 1.45 * (T - 16.0), walk: (T - 16.0) / (2 * B), arm: 0 };
-    if (T < 22.667) return { x: 0, z: 63.9, walk: null, arm: 0, lookUp: 1 };
-    if (T < 24.0) return { x: 0, z: 216.9 + 1.8 * (T - 22.667), walk: (T - 22.667) / (2 * B), arm: 0 };
-    const arm = E.inOutCubic(clamp((T - 25.333) / (26.5 - 25.333)));
+    if (T < T_BREAK) return null;
+    if (T < bt(23)) return { x: 0, z: 34, walk: null, arm: 0 };
+    if (T < bt(24)) return { x: 0, z: 34 + 1.45 * (T - bt(23)), walk: (T - bt(23)) / (2 * B), arm: 0 };
+    if (T < bt(28)) return { x: 0, z: 60 + 1.45 * (T - bt(24)), walk: (T - bt(24)) / (2 * B), arm: 0 };
+    if (T < bt(34)) return { x: 0, z: 63.9, walk: null, arm: 0, lookUp: 1 };
+    if (T < bt(36)) return { x: 0, z: 216.9 + 1.8 * (T - bt(34)), walk: (T - bt(34)) / (2 * B), arm: 0 };
+    const arm = E.inOutCubic(clamp((T - bt(38)) / (26.5 - bt(38))));
     return { x: 0, z: 219.3, walk: null, arm: T >= T_PRESS ? 1 : arm };
   };
 
@@ -2196,11 +2199,20 @@
     ctx.lineJoin = 'round';
     ctx.lineWidth = rimW * 2;
     for (const p of all) ctx.stroke(p);
-    for (const hd of hands) {
-      ctx.beginPath();
-      ctx.ellipse(hd.x, Y(hd.y - 0.012), 0.017 + 0.006 * hd.open, 0.024, 0, 0, TAU);
-      ctx.stroke();
-    }
+    const handPath = (hd) => {
+      // a hand along the forearm direction: palm, four fingers as one soft mitten, a thumb; opens to press
+      const ux = hd.dir[0], uy = -hd.dir[1]; // forearm direction in screen units (y down)
+      const vx = -uy, vy = ux; // across the hand
+      const w = 0.013 + 0.007 * hd.open, len = 0.05 + 0.006 * hd.open;
+      const P0 = [hd.x, Y(hd.y)];
+      const at = (a, b) => [P0[0] + ux * a + vx * b, P0[1] + uy * a + vy * b];
+      const p = new Path2D();
+      const q = [at(0, -w * 0.8), at(len * 0.45, -w), at(len * 0.95, -w * 0.7), at(len, 0), at(len * 0.95, w * 0.7), at(len * 0.5, w),
+        at(len * 0.42, w * (1.35 + 0.5 * hd.open)), at(len * 0.25, w * (1.25 + 0.3 * hd.open)), at(0, w * 0.8)];
+      spline(p, q, true);
+      return p;
+    };
+    for (const hd of hands) ctx.stroke(handPath(hd));
     // fills
     ctx.fillStyle = P.coat;
     for (const p of legs) ctx.fill(p);
@@ -2231,9 +2243,7 @@
     for (const p of arms) ctx.fill(p);
     for (const hd of hands) {
       ctx.fillStyle = css(mixc(P.skinDeep, P.skinShade, hd.open * 0.6));
-      ctx.beginPath();
-      ctx.ellipse(hd.x, Y(hd.y - 0.012), 0.016 + 0.006 * hd.open, 0.023, 0, 0, TAU);
-      ctx.fill();
+      ctx.fill(handPath(hd));
     }
     ctx.fillStyle = P.hair;
     ctx.fill(hair);
