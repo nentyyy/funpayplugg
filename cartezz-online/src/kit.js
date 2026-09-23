@@ -1278,8 +1278,8 @@
     // yawAt: the yaw the object shows at time faceT (so the story objects face the lens when they matter)
     const add = (type, x, y, z, size, arrive, spin, yawAt = 0.3, faceT = 0) =>
       objects.push({ type, x, y, z, size, arrive, seed: objects.length, spin, yaw0: yawAt - spin * faceT, rot0: -0.1, bob: 0.5, freq: 0.2, ph: objects.length });
-    add('bowtie', -3, 24, 82, 17, 14.667, 0.08, 0, 15.4);
-    add('capWhite', 7, 15, 100, 16, 17.333, 0.25, 0.45, 17.8);
+    add('bowtie', -10, 22, 84, 17, 14.667, 0.08, 0, 15.4);
+    add('capWhite', 10, 15, 104, 16, 17.333, 0.25, 0.45, 17.8);
     add('bowtie', -24, 30, 204, 20, 20.5, 0.06);
     add('tama', 22, 21, 198, 12, 19.8, 0.1);
     add('capPurple', 13, 36, 214, 17, 21.0, -0.2);

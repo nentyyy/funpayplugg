@@ -9,7 +9,7 @@
  *
  * Layers, back to front:
  *   1. kit.city from the over-the-shoulder camera (the button face, its bezel, the plaza floor)
- *   2. face grade: the pill's light falls off into dark at the frame edges; hot spot under the hand
+ *   2. face grade: the pill's light falls off into dark away from him (multiplied mask); hot spot under the hand
  *   3. light wrap behind his silhouette
  *   4. Cartezz (kit.figure, back view, arm from kit.cartezzAt)
  *   5. contact: bloom around the palm, a ring of light spreading on the face plane
@@ -161,6 +161,42 @@
     ctx.restore();
   }
 
+  let MASK = null;
+  /**
+   * Multiply mask over the button face: a dark base (the face reads as violet-black at the frame edges),
+   * lit pools behind his head, around the hand (growing as the palm nears) and under the giant letters.
+   * Drawn at 1/8 resolution (smooth gradients only), then multiplied up over the frame.
+   */
+  function faceFalloff(ctx, headX, headY, hx, hy, h, near, contact) {
+    const q = 1 / 8, w = Math.round(1080 * q), ht = Math.round(1920 * q);
+    if (!MASK) MASK = FILM.makeCanvas(w, ht);
+    const g = MASK.getContext('2d');
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.globalCompositeOperation = 'source-over';
+    g.globalAlpha = 1;
+    g.fillStyle = K.css(K.mix(P.violetInk, P.void, 0.35));
+    g.fillRect(0, 0, w, ht);
+    g.setTransform(q, 0, 0, q, 0, 0);
+    g.globalCompositeOperation = 'lighter';
+    const pool = (x, y, r, a) => {
+      const rg = g.createRadialGradient(x, y, 0, x, y, r);
+      rg.addColorStop(0, K.css(P.bone, a));
+      rg.addColorStop(0.45, K.css(P.bone, a * 0.55));
+      rg.addColorStop(1, K.css(P.bone, 0));
+      g.fillStyle = rg;
+      g.fillRect(x - r, y - r, 2 * r, 2 * r);
+    };
+    pool(headX, headY + 0.1 * h, 0.75 * h, 0.85);           // behind his head and shoulders
+    pool(hx, hy, h * (0.45 + 0.2 * near + 0.2 * contact), 0.35 + 0.45 * near + 0.3 * contact); // where the palm goes
+    pool(560, 170, 640, 0.75);                              // under the letters
+    pool(headX, headY + 0.45 * h, 0.55 * h, 0.35);          // down his back (keeps the rim readable)
+    ctx.save();
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(MASK, 0, 0, w, ht, 0, 0, 1080, 1920);
+    ctx.restore();
+  }
+
   FILM.scene({
     id: ID,
     draw(ctx, tIn, info) {
@@ -184,6 +220,9 @@
           const W = unproject(C, hx, hy, FACE_Z);
           // the face's diffuser grid, only visible this close (faint, on the face plane)
           faceGrid(c, C);
+          // the face falls off into dark away from him: light only behind his silhouette, under the palm
+          // and under the letters (multiplied over the face, before the figure and its rim are drawn)
+          faceFalloff(c, f[0], f[1] - 0.93 * h, hx, hy, h, sstep(0.35, 1, arm), contact);
           // 2. the face brightens under the approaching palm
           const near = sstep(0.35, 1, arm);
           K.glow(c, hx, hy, h * (0.3 + 0.12 * near), P.violetHot, 0.3 * near + 0.5 * contact);
@@ -226,7 +265,7 @@
       ctx.fillRect(0, 1300, 1080, 620);
       for (const side of [0, 1]) {
         g = ctx.createLinearGradient(side ? 1080 : 0, 0, side ? 700 : 380, 0);
-        g.addColorStop(0, K.css(P.void, (side ? 0.55 : 0.7) - 0.25 * contact));
+        g.addColorStop(0, K.css(P.void, (side ? 0.55 : 0.7) - 0.1 * contact));
         g.addColorStop(1, K.css(P.void, 0));
         ctx.fillStyle = g;
         ctx.fillRect(side ? 700 : 0, 0, 380, 1920);

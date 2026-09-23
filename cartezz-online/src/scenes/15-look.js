@@ -72,10 +72,11 @@
   function gradeBackground(ctx) {
     ctx.save();
     ctx.globalCompositeOperation = 'multiply';
-    let g = ctx.createRadialGradient(560, 430, 180, 560, 560, 1150);
+    let g = ctx.createRadialGradient(560, 520, 120, 560, 560, 960);
     g.addColorStop(0, P.bone);
-    g.addColorStop(0.4, K.css(K.mix(P.bone, P.violetInk, 0.3)));
-    g.addColorStop(0.75, K.css(K.mix(P.bone, P.violetInk, 0.8)));
+    g.addColorStop(0.3, K.css(K.mix(P.bone, P.violetInk, 0.3)));
+    g.addColorStop(0.58, K.css(K.mix(P.bone, P.violetInk, 0.85)));
+    g.addColorStop(0.85, K.css(K.mix(P.violetInk, P.void, 0.5)));
     g.addColorStop(1, P.void);
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, 1080, 1920);
@@ -141,7 +142,7 @@
       ctx.fillRect(0, 0, 1080, 1920);
       for (const side of [0, 1]) {
         g = ctx.createLinearGradient(side ? 1080 : 0, 0, side ? 780 : 300, 0);
-        g.addColorStop(0, K.css(P.void, 0.55));
+        g.addColorStop(0, K.css(P.void, 0.75));
         g.addColorStop(1, K.css(P.void, 0));
         ctx.fillStyle = g;
         ctx.fillRect(side ? 780 : 0, 0, 300, 1920);

@@ -75,7 +75,8 @@ The paper and blueprint keys of the foundation stay in `lib.pal` for the tools o
 | skinShade | #6C5660 | Skin in shade |
 | skinDeep | #2E2328 | Skin in deep shadow |
 | lips | #7A4E5C | Lips |
-| eye | #140E12 | Iris / lash line (dark eye makeup) |
+| eye | #140E12 | Iris / lash line |
+| shirt | #1F1D26 | Shirt under the lapels |
 | hot | #F7F0FF | One-frame white-violet flashes (press, world break) |
 
 ### 2.3 Light colours

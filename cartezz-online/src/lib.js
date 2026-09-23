@@ -330,6 +330,7 @@
     skinDeep: '#2E2328',
     lips: '#7A4E5C',
     eye: '#140E12',
+    shirt: '#1F1D26',
     hot: '#F7F0FF',
     // 2.3 cool schematic palette (blueprint plate)
     navy: '#0B1230',
