@@ -249,7 +249,7 @@
         const x0 = i * sw, y0 = j * sh;
         g.save();
         g.transform(ax, ay, cx, cy, pa[0] - ax * x0 - cx * y0, pa[1] - ay * x0 - cy * y0);
-        const ex = 0.8;
+        const ex = 3;
         const sx = Math.max(0, x0 - ex), sy = Math.max(0, y0 - ex);
         const ww = Math.min(W - sx, sw + 2 * ex), hh = Math.min(H - sy, sh + 2 * ex);
         g.drawImage(img, sx, sy, ww, hh, sx, sy, ww, hh);
@@ -376,7 +376,7 @@
         ctx.beginPath();
         poly(ctx, top);
         ctx.clip();
-        rectCells(ctx, C, img, corners[0], corners[1], corners[2], Math.max(2, Math.round(b.w / 60)), 3);
+        rectCells(ctx, C, img, corners[0], corners[1], corners[2], Math.max(3, Math.round(b.w / 40)), 5);
         ctx.restore();
         }
         ctx.save();

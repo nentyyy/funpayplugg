@@ -263,7 +263,7 @@
         bl.filter = 'none';
         ctx.save();
         ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
+        ctx.imageSmoothingQuality = 'low'; // already blurred: the cheap filter is enough
         ctx.drawImage(blc, 0, 0, blc.width, blc.height, 0, 0, 1080, 1920);
         ctx.restore();
       }
@@ -331,40 +331,40 @@
         sh.drawImage(mq, 0, 0);
       }
 
-      // key: cold white-violet on the front of the face, the broad spill from the top right on cap and shoulder
-      const kyc = layer('key', S, 0.25);
-      const ky = fresh(kyc, k4);
+      // light (additive, half resolution): the key — cold white-violet on the front of the face and the broad
+      // spill from the top right on cap and shoulder — then an edge light on every contour facing the hologram
+      const fxc = layer('fx', S, 0.5);
+      const fx = fresh(fxc, k2);
       {
         const fxx = hx + s * 0.34, fyy = hy - s * 0.02;
-        const kf = ky.createRadialGradient(fxx, fyy, 0, fxx, fyy, s * 0.62);
+        const kf = fx.createRadialGradient(fxx, fyy, 0, fxx, fyy, s * 0.62);
         kf.addColorStop(0, K.css(P.violetHot, 0.4 * hl));
         kf.addColorStop(0.5, K.css(P.violetHot, 0.15 * hl));
         kf.addColorStop(1, K.css(P.violetHot, 0));
-        ky.fillStyle = kf;
-        ky.fillRect(fxx - s, fyy - s, 2 * s, 2 * s);
-        ky.globalCompositeOperation = 'lighter';
-        const kg = ky.createRadialGradient(LIGHT.x - 80, LIGHT.y + 60, 200, LIGHT.x - 80, LIGHT.y + 60, 1250);
+        fx.fillStyle = kf;
+        fx.fillRect(fxx - s, fyy - s, 2 * s, 2 * s);
+        fx.globalCompositeOperation = 'lighter';
+        const kg = fx.createRadialGradient(LIGHT.x - 80, LIGHT.y + 60, 200, LIGHT.x - 80, LIGHT.y + 60, 1250);
         kg.addColorStop(0, K.css(P.violetHot, 0.3 * hl));
         kg.addColorStop(0.55, K.css(P.violetMid, 0.1 * hl));
         kg.addColorStop(1, K.css(P.violetMid, 0));
-        ky.fillStyle = kg;
-        ky.fillRect(0, 0, 1080, 1920);
-        ky.setTransform(1, 0, 0, 1, 0, 0);
-        ky.globalCompositeOperation = 'destination-in';
-        ky.drawImage(mq, 0, 0);
-      }
-
-      // edge light: every contour that faces the hologram (brow, nose, lips, chin, brim, shoulder)
-      const rimc = layer('rim', S, 0.5);
-      {
+        fx.fillStyle = kg;
+        fx.fillRect(0, 0, 1080, 1920);
+        fx.setTransform(1, 0, 0, 1, 0, 0);
+        fx.globalCompositeOperation = 'destination-in';
+        fx.drawImage(mk, 0, 0);
+        // edge light: the mask minus itself shifted toward the light leaves the lit contours
+        const rimc = layer('rim', S, 0.5);
         const Ld = [0.62, -0.785]; // screen direction toward the light
         const r = fresh(rimc, 1);
         r.drawImage(mk, 0, 0);
         r.globalCompositeOperation = 'destination-out';
         r.drawImage(mk, -Ld[0] * 6 * k2, -Ld[1] * 6 * k2);
         r.globalCompositeOperation = 'source-in';
-        r.fillStyle = K.css(P.violetHot, 1);
+        r.fillStyle = K.css(P.violetHot, 0.85 * hl);
         r.fillRect(0, 0, rimc.width, rimc.height);
+        fx.globalCompositeOperation = 'lighter';
+        fx.drawImage(rimc, 0, 0);
       }
 
       ctx.save();
@@ -372,9 +372,7 @@
       ctx.drawImage(lay, 0, 0, lay.width, lay.height, 0, 0, 1080, 1920);
       ctx.drawImage(shc, 0, 0, shc.width, shc.height, 0, 0, 1080, 1920);
       ctx.globalCompositeOperation = 'lighter';
-      ctx.drawImage(kyc, 0, 0, kyc.width, kyc.height, 0, 0, 1080, 1920);
-      ctx.globalAlpha = 0.85 * hl;
-      ctx.drawImage(rimc, 0, 0, rimc.width, rimc.height, 0, 0, 1080, 1920);
+      ctx.drawImage(fxc, 0, 0, fxc.width, fxc.height, 0, 0, 1080, 1920);
       ctx.restore();
 
       // 6. online dots in front, out of focus; one rises past his face on beat 4
