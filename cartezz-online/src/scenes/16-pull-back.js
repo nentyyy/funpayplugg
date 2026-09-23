@@ -56,9 +56,8 @@
   const HIM = { x: 0, z: 219.3 }; // Cartezz at the button (G3), arm raised, pressed
   const HEAD = [0, 1.72, 219.3]; //   the anchor the log-distance is measured from
 
-  // Start: behind him on the axis of shot 15's background camera (G4: pos (−0.9, 1.62, 214.6), yaw 0.1), a step
-  // closer: his head and shoulders against the glowing button face, the foot of the huge letters above him.
-  const CAM_START = { pos: [-0.5, 1.72, 216.75], yaw: 0.13, pitch: 0.13, f: 1150 };
+  // Start: exactly shot 15's background camera (storyboard G4), so the frozen city behind him is the one 15 ends on.
+  const CAM_START = { pos: [-0.9, 1.62, 214.6], yaw: 0.1, pitch: 0.05, f: 1100 };
   const CAM_END = K.CAM_AVATAR;
   const D0 = Math.hypot(CAM_START.pos[0] - HEAD[0], CAM_START.pos[1] - HEAD[1], CAM_START.pos[2] - HEAD[2]);
   const D1 = Math.hypot(CAM_END.pos[0] - HEAD[0], CAM_END.pos[1] - HEAD[1], CAM_END.pos[2] - HEAD[2]);
@@ -87,7 +86,183 @@
     return lerp(Z_HAND, 1, E.inOutCubic(clamp((t - B0) / (B1 - B0))));
   }
 
-  const drawHim = (c, C) => K.figure(c, C, HIM.x, HIM.z, { arm: 1 });
+  // He lowered his arm to turn and look at us in 15; he is drawn arm-down while he is big enough to read, and
+  // with the kit's pressed pose (arm 1, as kit.avatar draws him) once he is a few pixels tall on screen
+  // (`scr` = screen px per drawing px: K_AV · Z inside the zooming avatar).
+  function drawHim(c, C, rim, scr = 1) {
+    const f = C.project(HIM.x, 0, HIM.z), hd = C.project(HIM.x, 1.85, HIM.z);
+    const h = f && hd ? Math.hypot(hd[0] - f[0], hd[1] - f[1]) : 0;
+    const pose = { arm: h * scr > 12 ? 0 : 1 };
+    if (rim != null) pose.rim = rim;
+    K.figure(c, C, HIM.x, HIM.z, pose);
+  }
+
+  // ---------------------------------------------------------------------------
+  // The opening (T 29.333 → 30.0): the cut from 15. His head and shoulders fill the frame as 15 left them
+  // (kit.head, s 540 at (540, 830), profile, eye on the lens), over 15's soft, hard-graded button face. The
+  // figure is magnified about his head and relaxes to its true 3D projection by T_X (a dolly out: the near head
+  // shrinks fast, the far city slowly); the focus pulls to the city and the grade lets go by GRADE_END.
+  // ---------------------------------------------------------------------------
+  const T_X = 12 * FR; //       T 29.833  the figure is at its true projection; the city in focus
+  const GRADE_HOLD = 6 * FR; // T 29.583  15's grade starts to let go
+  const GRADE_END = 16 * FR; // T 30.000  15's grade fully released
+  const HEAD15 = { x: 540, y: 830, s: 540 }; // shot 15's last head (HEAD_X, HEAD_Y + push, S1)
+  const HEAD_C = [HIM.x, 0.925 * 1.85, HIM.z]; // his head centre in the world (figure: crown 0.985 h, head 0.12 h)
+  const HEAD_M = 0.12 * 1.85; //                  head height, metres
+  const BUST = { dir: -1, body: 'back', turn: 1, gaze: 1, expr: { blink: 0, smile: 0.14 }, light: { front: -1, amt: 0.8 }, rim: 1 };
+  const BUST_SEAM = 1.65; // the bust is cut below its shoulders (in head heights); the figure's coat carries on
+  const BUST_NECK = [0.75, 0.5]; // above this (head heights below the head centre) the figure hides behind the
+  //                                bust: at the neck on the cut (his long hair stays hidden), under the shoulder line as he shrinks
+  const BG_Q0 = 1 / 3; //    shot 15's background resolution (soft focus)
+
+  /** 15's grade strength: held through the first 6 frames (the cut), released by GRADE_END. */
+  const gradeAt = (t) => 1 - E.inOutSine(clamp((t - GRADE_HOLD) / (GRADE_END - GRADE_HOLD)));
+
+  /** Magnify-about-the-head wrapper of camera C: the figure lands on 15's head at v = 0, on the truth at v = 1. */
+  function heldCam(C, v, hs0) {
+    const pH = C.project(HEAD_C[0], HEAD_C[1], HEAD_C[2]);
+    if (!pH) return { C, s: 0, x: 0, y: 0 };
+    const m = Math.pow(HEAD15.s / hs0, 1 - v);
+    const ax = lerp(HEAD15.x, pH[0], v), ay = lerp(HEAD15.y, pH[1], v);
+    const W = Object.assign({}, C);
+    W.project = (x, y, z) => {
+      const p = C.project(x, y, z);
+      return p ? [ax + m * (p[0] - pH[0]), ay + m * (p[1] - pH[1]), p[2], p[3] * m] : null;
+    };
+    return { C: W, s: pH[3] * HEAD_M * m, x: ax, y: ay, m };
+  }
+
+  let SCR = null;
+  function scratch(w, h) {
+    if (!SCR || SCR.width < w || SCR.height < h) SCR = FILM.makeCanvas(Math.max(w, SCR ? SCR.width : 0), Math.max(h, SCR ? SCR.height : 0));
+    return SCR;
+  }
+
+  /** The frozen city at resolution q (1/3 = shot 15's soft focus … 1 = sharp), without him. */
+  function softCity(ctx, spec, T, q, S) {
+    if (q >= 0.999) {
+      K.city(ctx, spec, T, { px: S });
+      return;
+    }
+    const full = Math.round(1080 * S);
+    const w = Math.max(2, Math.round(1080 * S * q)), h = Math.max(2, Math.round(1920 * S * q));
+    const cv = scratch(full, Math.round(1920 * S));
+    const g = cv.getContext('2d');
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.globalCompositeOperation = 'source-over';
+    g.globalAlpha = 1;
+    g.fillStyle = P.void;
+    g.fillRect(0, 0, w + 2, h + 2);
+    const k = w / 1080;
+    g.setTransform(k, 0, 0, k, 0, 0);
+    // line weight eases from 15's soft-focus setting to the full-frame one
+    K.city(g, spec, T, { px: k, lw: lerp((1 / Math.max(0.2, k)) * 0.6, 1, (q - BG_Q0) / (1 - BG_Q0)) });
+    ctx.save();
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(cv, 0, 0, w, h, 0, 0, 1080, 1920);
+    ctx.restore();
+  }
+
+  /** Shot 15's grade of the button face (keeps the darks), at strength a (multiply layers mixed in by alpha). */
+  function grade15(ctx, a) {
+    if (a <= 0.001) return;
+    ctx.save();
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.globalAlpha = a;
+    let g = ctx.createRadialGradient(560, 520, 120, 560, 560, 960);
+    g.addColorStop(0, P.bone);
+    g.addColorStop(0.3, K.css(K.mix(P.bone, P.violetInk, 0.3)));
+    g.addColorStop(0.58, K.css(K.mix(P.bone, P.violetInk, 0.85)));
+    g.addColorStop(0.85, K.css(K.mix(P.violetInk, P.void, 0.5)));
+    g.addColorStop(1, P.void);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 1080, 1920);
+    g = ctx.createLinearGradient(0, 0, 0, 1920);
+    g.addColorStop(0, P.bone);
+    g.addColorStop(0.42, P.bone);
+    g.addColorStop(0.64, K.css(K.mix(P.bone, P.violetInk, 0.65)));
+    g.addColorStop(1, P.void);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 1080, 1920);
+    ctx.restore();
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    g = ctx.createLinearGradient(0, 0, 0, 640);
+    g.addColorStop(0, K.css(P.violetHot, 0));
+    g.addColorStop(0.5, K.css(P.violetHot, 0.07 * a));
+    g.addColorStop(1, K.css(P.violetHot, 0));
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 1080, 640);
+    ctx.restore();
+  }
+
+  /** Shot 15's vignette (radial + side walls), at strength a. */
+  function vignette15(ctx, a) {
+    if (a <= 0.001) return;
+    ctx.save();
+    let g = ctx.createRadialGradient(540, 820, 520, 540, 900, 1250);
+    g.addColorStop(0, K.css(P.void, 0));
+    g.addColorStop(1, K.css(P.void, 0.7 * a));
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 1080, 1920);
+    for (const side of [0, 1]) {
+      g = ctx.createLinearGradient(side ? 1080 : 0, 0, side ? 780 : 300, 0);
+      g.addColorStop(0, K.css(P.void, 0.75 * a));
+      g.addColorStop(1, K.css(P.void, 0));
+      ctx.fillStyle = g;
+      ctx.fillRect(side ? 780 : 0, 0, 300, 1920);
+    }
+    ctx.restore();
+  }
+
+  /** Phase A before T_X: soft graded city, the magnified figure, 15's bust over it, the vignette. */
+  function opening(ctx, t, T, S) {
+    const spec = camAt(t);
+    const v = E.inOutCubic(clamp(t / T_X));
+    const ga = gradeAt(t);
+    softCity(ctx, spec, T, lerp(BG_Q0, 1, E.inOutSine(clamp(t / T_X))), S);
+    grade15(ctx, ga);
+    const C = K.cam(spec);
+    const C0 = K.cam(CAM_START);
+    const p0 = C0.project(HEAD_C[0], HEAD_C[1], HEAD_C[2]);
+    const hs0 = p0[3] * HEAD_M;
+    const H = heldCam(C, v, hs0);
+    const bustA = clamp((H.s - 70) / (150 - 70));
+    // light wrap: the button's light bleeding around his head and shoulders (15's), shrinking with him
+    K.glow(ctx, H.x + 20 * H.s / HEAD15.s, H.y - 0.1 * H.s, H.s * 1.1, P.violetMid, 0.55 * ga);
+    K.glow(ctx, H.x, H.y + 0.7 * H.s, H.s * 1.6, P.violetMid, 0.25 * ga);
+    // the magnified figure under 15's detailed bust: its rim thins as it is blown up (the kit's rim is a fixed
+    // fraction of his height). Above the neck it stays hidden while the bust holds (its cap and hair would
+    // peek around the profile head) and comes in as the bust lets go; below, his coat and arms carry on.
+    const rim = Math.pow(Math.max(1, H.m), -0.75);
+    const neckY = H.y + lerp(BUST_NECK[0], BUST_NECK[1], clamp(v / 0.2)) * H.s;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(-10, neckY, 1100, Math.max(0, 1940 - neckY));
+    ctx.clip();
+    drawHim(ctx, H.C, rim);
+    ctx.restore();
+    if (bustA < 1) {
+      ctx.save();
+      ctx.globalAlpha *= 1 - bustA;
+      ctx.beginPath();
+      ctx.rect(-10, -10, 1100, neckY + 10);
+      ctx.clip();
+      drawHim(ctx, H.C, rim);
+      ctx.restore();
+    }
+    if (bustA > 0) {
+      ctx.save();
+      ctx.globalAlpha *= bustA;
+      ctx.beginPath();
+      ctx.rect(-10, -10, 1100, H.y + BUST_SEAM * H.s);
+      ctx.clip();
+      K.head(ctx, H.x, H.y, H.s, BUST);
+      ctx.restore();
+    }
+    vignette15(ctx, ga);
+  }
 
   // ring only, through the kit (drawn after the local avatar content, as kit.profile orders it)
   const RING_ONLY = {
@@ -130,7 +305,7 @@
     K.city(ctx, camSpec, T, {
       px: K_AV * S * Z,
       lw: LW_AV * Math.pow(Z, LW_EXP - 1),
-      extra: drawHim,
+      extra: (c, C) => drawHim(c, C, null, K_AV * Z),
     });
     ctx.restore();
     // 3 — the profile's scanlines run over the avatar too (kit.profile draws them after it); they come in with
@@ -154,9 +329,17 @@
       ctx.fillStyle = P.void;
       ctx.fillRect(0, 0, 1080, 1920);
 
+      if (t < T_X) {
+        // A1 — the cut from 15: his head and shoulders, 15's grade, then the dolly out
+        opening(ctx, t, T, S);
+        return;
+      }
       if (t < B0) {
-        // A — the 3D pull through the frozen city (full frame)
-        K.city(ctx, camAt(t), T, { px: S, extra: drawHim });
+        // A2 — the 3D pull through the frozen city (full frame); the last of 15's grade lets go by T 30.0
+        K.city(ctx, camAt(t), T, { px: S, extra: (c, C) => drawHim(c, C) });
+        const ga = gradeAt(t);
+        grade15(ctx, ga);
+        vignette15(ctx, ga);
         return;
       }
       if (t < B1) {
