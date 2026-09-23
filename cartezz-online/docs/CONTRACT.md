@@ -5,7 +5,7 @@ Every agent that touches this project follows it.
 
 ## Goal
 
-A film of <SUBJECT — one line, e.g. "the life of a monarch butterfly">, drawn entirely by JavaScript on a canvas, with music and sound effects synthesised in JavaScript.
+A film of Cartezz (@murthered), whose Telegram profile unfolds into a city of interface until he presses ONLINE and the whole city turns out to be inside his avatar, drawn entirely by JavaScript on a canvas, with music and sound effects synthesised in JavaScript.
 It ships as one self-contained HTML file and as a rendered MP4 for YouTube Shorts.
 The look and editing follow `docs/art-bible.md`.
 
@@ -24,6 +24,7 @@ The look and editing follow `docs/art-bible.md`.
 |---|---|---|
 | `src/core.js` | foundation | Defines `window.FILM`, the scene registry, `renderFrame`, global post-processing. |
 | `src/lib.js` | foundation | `FILM.lib`: RNG, noise, easing, ink lines, hatching, stipple, paper grain, blueprint helpers, palette. |
+| `src/kit.js` | director | `FILM.kit`: the film's shared world — 3D camera, the city, Cartezz, the gifts, the profile screen (G1), the avatar (G2). Frozen after load. Scenes call it; they never re-draw these elements themselves. |
 | `src/timeline.js` | storyboard | `FILM.TIMELINE`: bpm, duration, shot list with ids, files, times, modes and briefs, and the audio cue list. |
 | `src/scenes/NN-<id>.js` | one scene agent each | Registers one shot with `FILM.scene({...})`. `NN` is the two-digit shot order. |
 | `src/music.js` | music agent | `FILM.audio.render(ctx, opts)`: schedules the whole score and effects into any `BaseAudioContext`. |
@@ -35,7 +36,7 @@ The look and editing follow `docs/art-bible.md`.
 | `tools/check.cjs` | foundation | Automated checks: no media, determinism, full timeline coverage, every scene draws without throwing, frame cost. |
 | `docs/storyboard.md`, `docs/art-bible.md` | storyboard | The human-readable plan and the visual rules for this film. |
 
-Load order everywhere: `core.js`, `lib.js`, `timeline.js`, scene files sorted by filename, `music.js`, `player.js`.
+Load order everywhere: `core.js`, `lib.js`, `kit.js`, `timeline.js`, scene files sorted by filename, `music.js`, `player.js` (`snap --only` loads `core.js`, `lib.js`, `kit.js`, `timeline.js` and the one scene).
 
 ## API
 

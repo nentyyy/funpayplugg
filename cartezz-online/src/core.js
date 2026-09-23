@@ -311,7 +311,9 @@
     if (typeof cfg === 'number') amount = cfg;
     else if (cfg && typeof cfg === 'object' && cfg.grain != null) amount = Number(cfg.grain);
     if (!(amount > 0)) return;
-    const b = Math.floor(T * FILM.BOIL_FPS + EPS);
+    // post: { hold: T0 } freezes the grain clock from global time T0 on (the world freeze).
+    const hold = cfg && typeof cfg === 'object' && cfg.hold != null ? Number(cfg.hold) : Infinity;
+    const b = Math.floor(Math.min(T, hold) * FILM.BOIL_FPS + EPS);
     const v = Math.floor(ihash(b, 17, 3) * VARIANTS);
     const tile = grainTile(mode, v);
     const ox = Math.floor(ihash(b, 29, 5) * TILE);

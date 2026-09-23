@@ -114,6 +114,9 @@ function sources({ fixtures = false, only = null, player = true, needMusic = fal
   const core = path.join(SRC, 'core.js');
   const lib = path.join(SRC, 'lib.js');
   for (const f of [core, lib]) if (!fs.existsSync(f)) die(`${rel(f)} is missing.`);
+  // kit.js: the film's shared world (city, character, gifts, profile). Loaded after lib, before the timeline.
+  const kitFile = path.join(SRC, 'kit.js');
+  const kit = !fixtures && fs.existsSync(kitFile) ? [kitFile] : [];
   const tlFile = path.join(base, 'timeline.js');
   if (!fs.existsSync(tlFile)) {
     die(
@@ -149,10 +152,10 @@ function sources({ fixtures = false, only = null, player = true, needMusic = fal
     if (!shot) die(`--only: no shot with id '${only}' in ${label}/timeline.js. Ids: ${timeline.shots.map((s) => s.id).join(', ')}`);
     const f = shotFile(shot);
     if (!f || !fs.existsSync(f)) die(`shot '${only}': ${problems.find((p) => p.includes(`'${only}'`)) || 'file missing'}`);
-    files = [core, lib, tlFile, f];
+    files = [core, lib, ...kit, tlFile, f];
   } else {
     if (problems.length && !lenient) die(`timeline problems:\n  - ${problems.join('\n  - ')}`);
-    files = [core, lib, tlFile, ...sceneFiles];
+    files = [core, lib, ...kit, tlFile, ...sceneFiles];
     const musicFile = path.join(base, 'music.js');
     if (fs.existsSync(musicFile)) files.push(musicFile);
     else if (needMusic) die(`${label}/music.js is missing. The music agent writes it. Pass --silent to render without it.`);

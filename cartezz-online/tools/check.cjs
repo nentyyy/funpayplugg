@@ -132,7 +132,8 @@ async function main() {
 
   // ---------------------------------------------------------------- 3 sources (static)
   {
-    const files = [path.join(C.SRC, 'core.js'), path.join(C.SRC, 'lib.js'), path.join(src.base, 'timeline.js'), ...src.sceneFiles];
+    const kitFile = path.join(C.SRC, 'kit.js');
+    const files = [path.join(C.SRC, 'core.js'), path.join(C.SRC, 'lib.js'), ...(fixtures || !fs.existsSync(kitFile) ? [] : [kitFile]), path.join(src.base, 'timeline.js'), ...src.sceneFiles];
     if (src.musicFile) files.push(src.musicFile);
     files.push(path.join(C.SRC, 'player.js'));
     const hits = [];
